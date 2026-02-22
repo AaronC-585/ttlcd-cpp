@@ -1,0 +1,336 @@
+{
+  "idVendor": 9256,
+  "idProduct": 13581,
+  "use": "NODE",
+  
+  "background": "/path/to/background.jpg",
+  "orientation": "TOP",
+  "font_file": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+  "font_size": 10,
+  
+  "_comment": "Comprehensive Sensor Configuration - All Available Widgets",
+  
+  "usb_timeout_ms": 30000,
+  "packet_delay_ms": 1000,
+  "update_interval_sec": 2,
+  
+  "enable_ping": true,
+  "ping_interval_sec": 30,
+  
+  "widgets": [
+    {
+      "_comment": "=== HEADER SECTION ===",
+      "type": "text",
+      "enable": true,
+      "x": 10,
+      "y": 12,
+      "text": "SYSTEM MONITOR",
+      "font_size": 12,
+      "font_color": [255, 255, 255]
+    },
+    {
+      "type": "time",
+      "enable": true,
+      "x": 380,
+      "y": 12,
+      "font_size": 10,
+      "font_color": [200, 200, 200]
+    },
+    {
+      "type": "uptime",
+      "enable": true,
+      "x": 200,
+      "y": 12,
+      "font_size": 9,
+      "font_color": [180, 180, 180]
+    },
+    {
+      "type": "line",
+      "enable": true,
+      "x": 0,
+      "y": 18,
+      "orientation": "horizontal",
+      "length": 480,
+      "thickness": 1,
+      "line_color": [100, 100, 100]
+    },
+    
+    {
+      "_comment": "=== CPU SECTION ===",
+      "type": "text",
+      "enable": true,
+      "x": 5,
+      "y": 30,
+      "text": "CPU",
+      "font_size": 9,
+      "font_color": [200, 150, 150]
+    },
+    {
+      "type": "cpu_bar",
+      "enable": true,
+      "x": 35,
+      "y": 24,
+      "width": 100,
+      "height": 14,
+      "direction": "right"
+    },
+    {
+      "type": "cpu_temp",
+      "enable": true,
+      "x": 140,
+      "y": 30,
+      "font_size": 9,
+      "font_color": [255, 200, 150]
+    },
+    {
+      "type": "cpu_freq",
+      "enable": true,
+      "x": 190,
+      "y": 30,
+      "font_size": 9,
+      "font_color": [150, 200, 255]
+    },
+    
+    {
+      "_comment": "=== CPU CORES (Multi-core display) ===",
+      "type": "text",
+      "enable": true,
+      "x": 270,
+      "y": 30,
+      "text": "Cores:",
+      "font_size": 8,
+      "font_color": [180, 180, 180]
+    },
+    {
+      "type": "cpu_core",
+      "enable": true,
+      "x": 305,
+      "y": 30,
+      "core_id": -1,
+      "font_size": 8,
+      "font_color": [200, 200, 200]
+    },
+    
+    {
+      "_comment": "=== MEMORY SECTION ===",
+      "type": "line",
+      "enable": true,
+      "x": 0,
+      "y": 38,
+      "orientation": "horizontal",
+      "length": 480,
+      "thickness": 1,
+      "line_color": [80, 80, 80]
+    },
+    {
+      "type": "text",
+      "enable": true,
+      "x": 5,
+      "y": 50,
+      "text": "RAM",
+      "font_size": 9,
+      "font_color": [150, 200, 150]
+    },
+    {
+      "type": "ram_bar",
+      "enable": true,
+      "x": 35,
+      "y": 44,
+      "width": 100,
+      "height": 14
+    },
+    {
+      "type": "memory_details",
+      "enable": true,
+      "x": 140,
+      "y": 50,
+      "display_mode": "used",
+      "font_size": 9,
+      "font_color": [150, 255, 150]
+    },
+    {
+      "type": "swap_usage",
+      "enable": false,
+      "x": 200,
+      "y": 50,
+      "font_size": 9,
+      "font_color": [255, 200, 150]
+    },
+    
+    {
+      "_comment": "=== DISK SECTION ===",
+      "type": "text",
+      "enable": true,
+      "x": 250,
+      "y": 50,
+      "text": "Disk:",
+      "font_size": 9,
+      "font_color": [200, 200, 150]
+    },
+    {
+      "type": "disk_usage",
+      "enable": true,
+      "x": 280,
+      "y": 50,
+      "mount_point": "/",
+      "font_size": 8,
+      "font_color": [255, 255, 150]
+    },
+    
+    {
+      "_comment": "=== GPU SECTION (if available) ===",
+      "type": "line",
+      "enable": true,
+      "x": 0,
+      "y": 58,
+      "orientation": "horizontal",
+      "length": 480,
+      "thickness": 1,
+      "line_color": [80, 80, 80]
+    },
+    {
+      "type": "text",
+      "enable": false,
+      "x": 5,
+      "y": 70,
+      "text": "GPU",
+      "font_size": 9,
+      "font_color": [200, 150, 200]
+    },
+    {
+      "type": "gpu_usage",
+      "enable": false,
+      "x": 35,
+      "y": 70,
+      "gpu_type": "nvidia",
+      "font_size": 9,
+      "font_color": [255, 150, 255]
+    },
+    {
+      "type": "gpu_temp",
+      "enable": false,
+      "x": 80,
+      "y": 70,
+      "gpu_type": "nvidia",
+      "font_size": 9,
+      "font_color": [255, 200, 150]
+    },
+    {
+      "type": "gpu_memory",
+      "enable": false,
+      "x": 130,
+      "y": 70,
+      "gpu_type": "nvidia",
+      "display_mode": "percent",
+      "font_size": 9,
+      "font_color": [200, 200, 255]
+    },
+    
+    {
+      "_comment": "=== NETWORK SECTION ===",
+      "type": "text",
+      "enable": true,
+      "x": 5,
+      "y": 76,
+      "text": "Net",
+      "font_size": 9,
+      "font_color": [150, 200, 255]
+    },
+    {
+      "type": "network",
+      "enable": true,
+      "x": 35,
+      "y": 76,
+      "font_size": 8,
+      "font_color": [150, 220, 255]
+    },
+    {
+      "type": "network_interface",
+      "enable": true,
+      "x": 140,
+      "y": 76,
+      "interface": "eth0",
+      "display_mode": "ip",
+      "font_size": 8,
+      "font_color": [180, 180, 200]
+    },
+    
+    {
+      "_comment": "=== DISK I/O SECTION ===",
+      "type": "text",
+      "enable": true,
+      "x": 250,
+      "y": 76,
+      "text": "I/O",
+      "font_size": 9,
+      "font_color": [255, 200, 150]
+    },
+    {
+      "type": "disk_io",
+      "enable": true,
+      "x": 275,
+      "y": 76,
+      "device": "sda",
+      "font_size": 7,
+      "font_color": [255, 220, 180]
+    },
+    
+    {
+      "_comment": "=== SYSTEM INFO SECTION ===",
+      "type": "line",
+      "enable": true,
+      "x": 0,
+      "y": 96,
+      "orientation": "horizontal",
+      "length": 480,
+      "thickness": 1,
+      "line_color": [80, 80, 80]
+    },
+    {
+      "type": "loadavg",
+      "enable": true,
+      "x": 5,
+      "y": 108,
+      "font_size": 8,
+      "font_color": [200, 255, 200]
+    },
+    {
+      "type": "process_count",
+      "enable": true,
+      "x": 120,
+      "y": 108,
+      "font_size": 8,
+      "font_color": [200, 200, 255]
+    },
+    {
+      "type": "fan_speed",
+      "enable": false,
+      "x": 200,
+      "y": 108,
+      "sensor_path": "/sys/class/hwmon/hwmon0/fan1_input",
+      "font_size": 8,
+      "font_color": [150, 255, 255]
+    },
+    {
+      "type": "battery",
+      "enable": false,
+      "x": 300,
+      "y": 108,
+      "battery_path": "/sys/class/power_supply/BAT0",
+      "font_size": 8,
+      "font_color": [255, 255, 150]
+    },
+    
+    {
+      "_comment": "=== FOOTER ===",
+      "type": "line",
+      "enable": true,
+      "x": 0,
+      "y": 120,
+      "orientation": "horizontal",
+      "length": 480,
+      "thickness": 2,
+      "line_color": [100, 100, 100]
+    }
+  ]
+}

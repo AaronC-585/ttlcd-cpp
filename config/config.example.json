@@ -1,0 +1,113 @@
+{
+  "idVendor": 9256,
+  "idProduct": 13581,
+  "use": "NODE",
+  
+  "background": "/path/to/background.jpg",
+  "orientation": "TOP",
+  "font_file": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+  "font_size": 14,
+  
+  "_comment_timeouts": "Timeout and performance configuration",
+  "usb_timeout_ms": 30000,
+  "packet_delay_ms": 1000,
+  "update_interval_sec": 1,
+  
+  "_comment_ping": "Keep-alive ping-pong configuration to prevent USB timeouts",
+  "enable_ping": true,
+  "ping_interval_sec": 30,
+  
+  "_comment_widgets": "Widget configuration",
+  "widgets": [
+    {
+      "type": "text",
+      "enable": true,
+      "x": 10,
+      "y": 20,
+      "text": "System Monitor",
+      "font_size": 16,
+      "font_color": [255, 255, 255]
+    },
+    {
+      "type": "date",
+      "enable": true,
+      "x": 10,
+      "y": 50,
+      "font_size": 14,
+      "font_color": [200, 200, 200]
+    },
+    {
+      "type": "time",
+      "enable": true,
+      "x": 150,
+      "y": 50,
+      "font_size": 14,
+      "font_color": [200, 200, 200]
+    },
+    {
+      "type": "cpu_bar",
+      "enable": true,
+      "x": 10,
+      "y": 70,
+      "width": 440,
+      "height": 20,
+      "direction": "right",
+      "font_size": 12
+    },
+    {
+      "type": "ram_bar",
+      "enable": true,
+      "x": 10,
+      "y": 100,
+      "width": 440,
+      "height": 20,
+      "font_size": 12
+    },
+    {
+      "type": "loadavg",
+      "enable": true,
+      "x": 10,
+      "y": 140,
+      "font_size": 12,
+      "font_color": [150, 255, 150]
+    },
+    {
+      "type": "network",
+      "enable": true,
+      "x": 300,
+      "y": 140,
+      "font_size": 12,
+      "font_color": [150, 200, 255]
+    }
+  ],
+  
+  "_comment_notes": [
+    "Configuration options explained:",
+    "",
+    "USB Settings:",
+    "  usb_timeout_ms: Timeout for USB bulk transfers (default: 30000 = 30 seconds)",
+    "  packet_delay_ms: Delay between sending packets (default: 1000 = 1 second)",
+    "  update_interval_sec: How often to update the display (default: 1 second)",
+    "",
+    "Ping-Pong Keep-Alive:",
+    "  enable_ping: Enable periodic keep-alive pings to prevent device timeout (default: true)",
+    "  ping_interval_sec: How often to send ping packets (default: 30 seconds)",
+    "  Note: Pings are only sent when display updates aren't being sent",
+    "",
+    "Performance Tips:",
+    "  - If experiencing timeouts, try increasing usb_timeout_ms to 60000 or more",
+    "  - If experiencing USB errors, try increasing packet_delay_ms to 2000",
+    "  - For slower updates, increase update_interval_sec (e.g., 5 for every 5 seconds)",
+    "  - Disable ping if your device doesn't need it (enable_ping: false)",
+    "",
+    "Widget Types:",
+    "  text: Static text display",
+    "  date: Current date",
+    "  time: Current time",
+    "  cpu_bar: CPU utilization bar graph",
+    "  ram_bar: RAM utilization bar graph",
+    "  loadavg: System load average",
+    "  network: Network upload/download speed",
+    "  dynamic_text: Dynamic text with format string"
+  ]
+}

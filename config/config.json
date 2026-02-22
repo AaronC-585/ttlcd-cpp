@@ -1,0 +1,25 @@
+{
+  "idVendor": 9802,
+  "idProduct": 9021,
+  "jpeg_quality": 85,
+  "jpeg_optimize": true,
+  "use": "NODE",
+  "orientation": "TOP",
+  "background": "./backgrounds/blk.jpg",
+
+  "font_size": 26,
+  "font_color": [255, 255, 255],
+
+  "font_file": "./fonts/ComicRelief-Bold.ttf",
+
+  "widgets": [
+    {
+      "type": "cpu_percent",
+      "enable": true,
+      "x": 20,
+      "y": 40,
+      "font_size": 56,
+      "font_color": [0, 255, 255]
+    }
+  ]
+}

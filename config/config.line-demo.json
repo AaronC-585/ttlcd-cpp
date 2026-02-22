@@ -1,0 +1,146 @@
+{
+  "idVendor": 9256,
+  "idProduct": 13581,
+  "use": "NODE",
+  
+  "background": "/path/to/background.jpg",
+  "orientation": "TOP",
+  "font_file": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+  "font_size": 12,
+  
+  "_comment": "This config demonstrates the line widget with various styles",
+  
+  "widgets": [
+    {
+      "_comment": "Header text",
+      "type": "text",
+      "enable": true,
+      "x": 10,
+      "y": 15,
+      "text": "SYSTEM MONITOR",
+      "font_size": 14,
+      "font_color": [255, 255, 255]
+    },
+    {
+      "_comment": "Bold horizontal line under header",
+      "type": "line",
+      "enable": true,
+      "x": 10,
+      "y": 25,
+      "orientation": "horizontal",
+      "length": 460,
+      "thickness": 2,
+      "line_color": [120, 120, 120]
+    },
+    {
+      "_comment": "Current time",
+      "type": "time",
+      "enable": true,
+      "x": 380,
+      "y": 15,
+      "font_size": 12,
+      "font_color": [200, 200, 200]
+    },
+    {
+      "_comment": "CPU section",
+      "type": "text",
+      "enable": true,
+      "x": 10,
+      "y": 42,
+      "text": "CPU",
+      "font_size": 10,
+      "font_color": [180, 180, 180]
+    },
+    {
+      "_comment": "CPU usage bar",
+      "type": "cpu_bar",
+      "enable": true,
+      "x": 50,
+      "y": 35,
+      "width": 180,
+      "height": 18,
+      "direction": "right"
+    },
+    {
+      "_comment": "Vertical separator",
+      "type": "line",
+      "enable": true,
+      "x": 240,
+      "y": 32,
+      "orientation": "vertical",
+      "length": 24,
+      "thickness": 1,
+      "line_color": [100, 100, 100]
+    },
+    {
+      "_comment": "RAM section",
+      "type": "text",
+      "enable": true,
+      "x": 250,
+      "y": 42,
+      "text": "RAM",
+      "font_size": 10,
+      "font_color": [180, 180, 180]
+    },
+    {
+      "_comment": "RAM usage bar",
+      "type": "ram_bar",
+      "enable": true,
+      "x": 290,
+      "y": 35,
+      "width": 180,
+      "height": 18
+    },
+    {
+      "_comment": "Thin section divider",
+      "type": "line",
+      "enable": true,
+      "x": 0,
+      "y": 64,
+      "orientation": "horizontal",
+      "length": 480,
+      "thickness": 1,
+      "line_color": [80, 80, 80]
+    },
+    {
+      "_comment": "Load average",
+      "type": "loadavg",
+      "enable": true,
+      "x": 10,
+      "y": 80,
+      "font_size": 11,
+      "font_color": [150, 255, 150]
+    },
+    {
+      "_comment": "Another vertical separator",
+      "type": "line",
+      "enable": true,
+      "x": 240,
+      "y": 70,
+      "orientation": "vertical",
+      "length": 40,
+      "thickness": 1,
+      "line_color": [100, 100, 100]
+    },
+    {
+      "_comment": "Network stats",
+      "type": "network",
+      "enable": true,
+      "x": 260,
+      "y": 80,
+      "font_size": 11,
+      "font_color": [150, 200, 255]
+    },
+    {
+      "_comment": "Bottom decorative border",
+      "type": "line",
+      "enable": true,
+      "x": 10,
+      "y": 118,
+      "orientation": "horizontal",
+      "length": 460,
+      "thickness": 3,
+      "line_color": [60, 60, 60]
+    }
+  ]
+}
