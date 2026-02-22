@@ -1,24 +1,3 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ttlcd-cpp - Thermaltake Tower 200 LCD Dashboard (C++ Port)</title>
-    <meta name="description" content="Modern C++ driver for the Thermaltake Tower 200 3.9-inch USB LCD panel with live system monitoring, custom fonts, and JSON configuration.">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f9f9f9; }
-        h1, h2, h3 { color: #2c3e50; }
-        pre { background: #f4f4f4; padding: 15px; border-radius: 8px; overflow-x: auto; }
-        code { background: #eef; padding: 2px 6px; border-radius: 4px; }
-        a { color: #3498db; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .badge { background: #e74c3c; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
-        .note { background: #fffacd; border-left: 4px solid #ffeb3b; padding: 10px; margin: 20px 0; }
-    </style>
-</head>
-<body>
-
 <h1>ttlcd-cpp <span class="badge">C++</span></h1>
 
 <p><strong>Modern C++ port of the original Python driver for the Thermaltake Tower 200 (and compatible models) 3.9-inch USB LCD panel (480×128 resolution).</strong></p>
@@ -167,7 +146,4 @@ Ported and enhanced in C++ for better performance and features.</p>
 
 <p>Enjoy your sleek, custom LCD dashboard! 🎉</p>
 
-<p><em>Last updated: December 21, 2025</em></p>
-
-</body>
-</html>
+<p><em>Last updated: February 22, 2026</em></p>
