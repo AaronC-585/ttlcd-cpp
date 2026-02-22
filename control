@@ -1,0 +1,12 @@
+Package: ttlcd
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Your Name <you@example.com>
+Depends: libusb-1.0-0, libopencv-core4.5 | libopencv-core4.6, libopencv-imgproc4.5 | libopencv-imgproc4.6, libopencv-imgcodecs4.5 | libopencv-imgcodecs4.6, libopencv-highgui4.5 | libopencv-highgui4.6
+Build-Depends: build-essential, pkg-config, libusb-1.0-0-dev, libopencv-dev, libfreetype6-dev
+Description: TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels
+ A modern C++ utility for driving 3.9-inch USB LCD panels (480x128) with
+ live system monitoring, custom TTF fonts via OpenCV FreeType, bar graphs,
+ network speed, and full JSON configuration.

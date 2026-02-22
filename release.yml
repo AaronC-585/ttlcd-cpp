@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config dpkg-dev \
+            libusb-1.0-0-dev libopencv-dev libfreetype6-dev
+
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Package .deb
+        run: |
+          mkdir -p pkg/DEBIAN pkg/usr/bin
+          cp packaging/debian/control pkg/DEBIAN/control
+          sed -i "s/Version: .*/Version: ${GITHUB_REF_NAME#v}/" pkg/DEBIAN/control
+          cp ttlcd pkg/usr/bin/ttlcd
+          dpkg-deb --build pkg ttlcd-${{ github.ref_name }}-amd64.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: "*.deb"
+
+  build-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y \
+            gcc-c++ make pkg-config rpm-build \
+            libusb1-devel opencv-devel freetype-devel
+
+      - name: Build RPM
+        run: |
+          mkdir -p ~/rpmbuild/{SOURCES,SPECS}
+          tar czf ~/rpmbuild/SOURCES/ttlcd-${GITHUB_REF_NAME#v}.tar.gz \
+            --transform "s,^,ttlcd-${GITHUB_REF_NAME#v}/," .
+          cp packaging/rpm/ttlcd.spec ~/rpmbuild/SPECS/
+          sed -i "s/^Version:.*/Version: ${GITHUB_REF_NAME#v}/" ~/rpmbuild/SPECS/ttlcd.spec
+          rpmbuild -ba ~/rpmbuild/SPECS/ttlcd.spec
+          find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: "*.rpm"
+
+  build-arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pacman -Sy --noconfirm \
+            base-devel pkg-config libusb opencv freetype2
+
+      - name: Build & package
+        run: |
+          cp packaging/arch/PKGBUILD .
+          sed -i "s/pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" PKGBUILD
+          useradd -m builder
+          chown -R builder:builder .
+          su builder -c "makepkg -s --noconfirm --skipinteg"
+          tar czf ttlcd-${{ github.ref_name }}-PKGBUILD.tar.gz PKGBUILD
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: |
+            *.pkg.tar.zst
+            *.tar.gz
+
+  release:
+    needs: [build-deb, build-rpm, build-arch]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.deb
+            *.rpm
+            *.pkg.tar.zst
+            *.tar.gz
+          generate_release_notes: true

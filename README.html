@@ -1,0 +1,670 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ttlcd-cpp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #00ff88;
+      --green-dim: #00cc66;
+      --green-glow: rgba(0, 255, 136, 0.15);
+      --green-faint: rgba(0, 255, 136, 0.05);
+      --bg: #050f09;
+      --bg2: #081208;
+      --panel: #0a1a0e;
+      --border: #0d2e14;
+      --text: #b0d8b8;
+      --text-dim: #527a5a;
+      --cyan: #00ffcc;
+      --amber: #ffaa00;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 400;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.08) 2px,
+        rgba(0, 0, 0, 0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* Vignette */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+      pointer-events: none;
+      z-index: 998;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 60px 32px;
+    }
+
+    /* LCD display header */
+    .lcd-header {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 32px 40px;
+      margin-bottom: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lcd-header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--green-faint) 0%, transparent 60%);
+    }
+
+    .lcd-header::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+      animation: scanbeam 4s ease-in-out infinite;
+    }
+
+    @keyframes scanbeam {
+      0%, 100% { opacity: 0; transform: translateX(-100%); }
+      50% { opacity: 1; transform: translateX(100%); }
+    }
+
+    .badge-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      padding: 3px 10px;
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .badge.cyan { border-color: var(--cyan); color: var(--cyan); }
+    .badge.amber { border-color: var(--amber); color: var(--amber); }
+
+    h1 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 42px;
+      color: var(--green);
+      text-shadow: 0 0 20px rgba(0,255,136,0.5), 0 0 60px rgba(0,255,136,0.2);
+      letter-spacing: 4px;
+      margin-bottom: 12px;
+      animation: flicker 8s ease-in-out infinite;
+    }
+
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96% { opacity: 0.85; }
+      97% { opacity: 1; }
+      98% { opacity: 0.9; }
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-dim);
+      font-weight: 300;
+      letter-spacing: 1px;
+      line-height: 1.6;
+      max-width: 600px;
+    }
+
+    .subtitle strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Section */
+    section {
+      margin-bottom: 40px;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeup 0.5s ease forwards;
+    }
+
+    section:nth-child(1) { animation-delay: 0.1s; }
+    section:nth-child(2) { animation-delay: 0.2s; }
+    section:nth-child(3) { animation-delay: 0.3s; }
+    section:nth-child(4) { animation-delay: 0.4s; }
+    section:nth-child(5) { animation-delay: 0.5s; }
+    section:nth-child(6) { animation-delay: 0.6s; }
+    section:nth-child(7) { animation-delay: 0.7s; }
+    section:nth-child(8) { animation-delay: 0.8s; }
+    section:nth-child(9) { animation-delay: 0.9s; }
+
+    @keyframes fadeup {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 4px;
+      color: var(--green);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h2::before {
+      content: '//';
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    h3 {
+      font-size: 13px;
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin: 20px 0 10px;
+    }
+
+    p {
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
+      font-weight: 300;
+    }
+
+    /* Feature list */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--green-faint);
+      border-left: 2px solid var(--green-dim);
+      font-size: 14px;
+      line-height: 1.5;
+      transition: background 0.2s;
+    }
+
+    .feature-item:hover {
+      background: var(--green-glow);
+    }
+
+    .feature-item::before {
+      content: '▸';
+      color: var(--green);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Code blocks */
+    pre {
+      background: #020a04;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green-dim);
+      padding: 18px 20px;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    code {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      line-height: 1.8;
+    }
+
+    p code, li code {
+      background: #020a04;
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      font-size: 12px;
+      color: var(--cyan);
+    }
+
+    /* Install tabs */
+    .install-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 2px;
+      padding: 8px 20px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: #020a04;
+      color: var(--green);
+      border-color: var(--green-dim);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Config */
+    .config-block {
+      background: #020a04;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan);
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    .config-block code {
+      color: #7fffd4;
+    }
+
+    .config-block .key { color: var(--cyan); }
+    .config-block .val-num { color: var(--amber); }
+    .config-block .val-str { color: #88ff88; }
+    .config-block .val-bool { color: #ff8888; }
+    .config-block .comment { color: var(--text-dim); }
+
+    /* Placeholders */
+    .placeholder-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 20px;
+      align-items: center;
+    }
+
+    .ph-key {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: var(--cyan);
+      white-space: nowrap;
+    }
+
+    .ph-desc {
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    /* Troubleshooting */
+    .trouble-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+    }
+
+    .trouble-item:last-child { border-bottom: none; }
+
+    .trouble-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--amber);
+      white-space: nowrap;
+      padding-top: 1px;
+    }
+
+    .trouble-desc {
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    /* Release section */
+    .release-block {
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      background: var(--green-faint);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .release-block p {
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    /* Systemd */
+    .systemd-block {
+      background: #020a04;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--amber);
+      padding: 18px 20px;
+    }
+
+    .systemd-block code { color: var(--amber); }
+
+    /* Footer */
+    footer {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    footer a {
+      color: var(--green-dim);
+      text-decoration: none;
+    }
+
+    footer a:hover { color: var(--green); }
+
+    /* Fonts section */
+    .font-links {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .font-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .font-link a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+    }
+
+    .font-link a:hover { color: var(--green); }
+    .font-link span { color: var(--text-dim); font-size: 13px; }
+
+    /* Screenshot placeholder */
+    .screenshot-placeholder {
+      border: 1px dashed var(--border);
+      padding: 32px;
+      text-align: center;
+      color: var(--text-dim);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 2px;
+      background: var(--green-faint);
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 28px; }
+      .features { grid-template-columns: 1fr; }
+      .placeholder-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="lcd-header">
+      <div class="badge-row">
+        <span class="badge">C++17</span>
+        <span class="badge cyan">Linux</span>
+        <span class="badge amber">MIT</span>
+      </div>
+      <h1>ttlcd-cpp</h1>
+      <p class="subtitle">
+        <strong>Modern C++ port</strong> of the original Python driver for the Thermaltake Tower 200 (and compatible models) 3.9-inch USB LCD panel (480×128 resolution). A highly customizable, performant system monitoring dashboard with live updates, custom TTF fonts, bar graphs, network speed, and more.
+      </p>
+    </div>
+
+    <!-- Screenshot -->
+    <section>
+      <h2>Preview</h2>
+      <div class="screenshot-placeholder">[ SCREENSHOT PENDING — place screenshot.png here ]</div>
+    </section>
+
+    <!-- Features -->
+    <section>
+      <h2>Features</h2>
+      <div class="features">
+        <div class="feature-item">Live CPU &amp; RAM usage bars with network speed</div>
+        <div class="feature-item">Dynamic text widget with powerful placeholders</div>
+        <div class="feature-item">Custom TTF fonts via OpenCV FreeType (Digital-7, Orbitron)</div>
+        <div class="feature-item">Graceful error handling — shows ERR on screen on failure</div>
+        <div class="feature-item">Full JSON configuration for layout, color &amp; widgets</div>
+        <div class="feature-item">Complete USB protocol with initialization sequence</div>
+        <div class="feature-item">Robust libusb error reporting</div>
+        <div class="feature-item">Temporary image rendering with automatic cleanup</div>
+      </div>
+    </section>
+
+    <!-- Requirements -->
+    <section>
+      <h2>Requirements</h2>
+      <h3>Runtime Dependencies</h3>
+      <pre><code>sudo apt install libusb-1.0-0 libopencv-core4.5 libopencv-imgproc4.5 \
+    libopencv-imgcodecs4.5 libopencv-highgui4.5</code></pre>
+      <h3>Build Dependencies</h3>
+      <pre><code>sudo apt install build-essential pkg-config libusb-1.0-0-dev \
+    libopencv-dev libfreetype6-dev</code></pre>
+    </section>
+
+    <!-- Building -->
+    <section>
+      <h2>Building</h2>
+      <pre><code>make -j$(nproc)           # Build the executable
+sudo ./ttlcd config.json  # Run (requires sudo for USB access)</code></pre>
+      <p style="margin-top:12px;">Clean rebuild:</p>
+      <pre style="margin-top:8px;"><code>make clean && make -j$(nproc)</code></pre>
+    </section>
+
+    <!-- Install -->
+    <section>
+      <h2>Install</h2>
+      <div class="install-tabs">
+        <button class="tab-btn active" onclick="showTab('deb', this)">Debian/Ubuntu</button>
+        <button class="tab-btn" onclick="showTab('rpm', this)">Fedora/RHEL</button>
+        <button class="tab-btn" onclick="showTab('arch', this)">Arch Linux</button>
+      </div>
+      <div id="tab-deb" class="tab-content active">
+        <pre><code>wget https://github.com/YOURUSERNAME/ttlcd/releases/latest/download/ttlcd-v1.0.0-amd64.deb
+sudo dpkg -i ttlcd-v1.0.0-amd64.deb</code></pre>
+      </div>
+      <div id="tab-rpm" class="tab-content">
+        <pre><code>sudo rpm -i ttlcd-1.0.0-1.x86_64.rpm</code></pre>
+      </div>
+      <div id="tab-arch" class="tab-content">
+        <pre><code># Download PKGBUILD.tar.gz from releases, extract then:
+makepkg -si</code></pre>
+      </div>
+    </section>
+
+    <!-- Release -->
+    <section>
+      <h2>Release</h2>
+      <div class="release-block">
+        <p>Tag a version to trigger an automated build and release for all 3 package managers via GitHub Actions.</p>
+        <pre><code>git tag v1.0.0
+git push origin v1.0.0</code></pre>
+        <p>GitHub Actions will automatically build and publish <code>.deb</code>, <code>.rpm</code>, and <code>PKGBUILD</code> as release assets.</p>
+      </div>
+    </section>
+
+    <!-- Config -->
+    <section>
+      <h2>Configuration</h2>
+      <p style="margin-bottom:14px;">Full <code>config.json</code> example:</p>
+      <div class="config-block">
+        <pre><code>{
+  <span class="key">"idVendor"</span>: <span class="val-num">9802</span>,
+  <span class="key">"idProduct"</span>: <span class="val-num">9021</span>,
+  <span class="key">"use"</span>: <span class="val-str">"NODE"</span>,
+  <span class="key">"orientation"</span>: <span class="val-str">"TOP"</span>,
+  <span class="key">"background"</span>: <span class="val-str">"./bg.jpg"</span>,
+
+  <span class="comment">// Global defaults</span>
+  <span class="key">"font_size"</span>: <span class="val-num">14</span>,
+  <span class="key">"font_color"</span>: [<span class="val-num">255</span>, <span class="val-num">255</span>, <span class="val-num">255</span>],
+  <span class="key">"font_file"</span>: <span class="val-str">"fonts/Digital-7.ttf"</span>,
+
+  <span class="comment">// Widgets</span>
+  <span class="key">"enable_date"</span>: <span class="val-bool">true</span>,
+  <span class="key">"date_x"</span>: <span class="val-num">20</span>, <span class="key">"date_y"</span>: <span class="val-num">10</span>, <span class="key">"date_font_size"</span>: <span class="val-num">20</span>,
+
+  <span class="key">"enable_time"</span>: <span class="val-bool">true</span>,
+  <span class="key">"time_x"</span>: <span class="val-num">20</span>, <span class="key">"time_y"</span>: <span class="val-num">40</span>, <span class="key">"time_font_size"</span>: <span class="val-num">32</span>,
+
+  <span class="key">"enable_cpu_bar"</span>: <span class="val-bool">true</span>,
+  <span class="key">"cpu_bar_x"</span>: <span class="val-num">20</span>, <span class="key">"cpu_bar_y"</span>: <span class="val-num">80</span>,
+  <span class="key">"cpu_bar_width"</span>: <span class="val-num">440</span>, <span class="key">"cpu_bar_height"</span>: <span class="val-num">30</span>,
+
+  <span class="key">"enable_ram_bar"</span>: <span class="val-bool">true</span>,
+  <span class="key">"ram_bar_x"</span>: <span class="val-num">20</span>, <span class="key">"ram_bar_y"</span>: <span class="val-num">120</span>,
+  <span class="key">"ram_bar_width"</span>: <span class="val-num">440</span>, <span class="key">"ram_bar_height"</span>: <span class="val-num">30</span>,
+
+  <span class="key">"enable_network"</span>: <span class="val-bool">true</span>,
+  <span class="key">"network_x"</span>: <span class="val-num">20</span>, <span class="key">"network_y"</span>: <span class="val-num">160</span>,
+  <span class="key">"network_font_size"</span>: <span class="val-num">28</span>,
+
+  <span class="key">"enable_dynamic_text"</span>: <span class="val-bool">true</span>,
+  <span class="key">"dynamic_text_font_color"</span>: [<span class="val-num">0</span>, <span class="val-num">255</span>, <span class="val-num">255</span>],
+  <span class="key">"format"</span>: <span class="val-str">"CPU: {cpu_percent}% | RAM: {ram_percent}% | ↑{net_up} ↓{net_down} | {time}"</span>
+}</code></pre>
+      </div>
+
+      <h3>Dynamic Text Placeholders</h3>
+      <div class="placeholder-grid">
+        <span class="ph-key">{cpu_percent}</span><span class="ph-desc">CPU usage %</span>
+        <span class="ph-key">{ram_percent}</span><span class="ph-desc">RAM usage %</span>
+        <span class="ph-key">{net_up}</span><span class="ph-desc">Upload speed (KB/s)</span>
+        <span class="ph-key">{net_down}</span><span class="ph-desc">Download speed (KB/s)</span>
+        <span class="ph-key">{loadavg}</span><span class="ph-desc">Load average (1/5/15 min)</span>
+        <span class="ph-key">{time}</span><span class="ph-desc">Current time</span>
+        <span class="ph-key">{date}</span><span class="ph-desc">Current date</span>
+      </div>
+
+      <h3>Custom Fonts</h3>
+      <p style="margin-bottom:12px;">Create a <code>fonts/</code> folder and place <code>.ttf</code> files there. Recommended free fonts:</p>
+      <div class="font-links">
+        <div class="font-link"><a href="https://www.dafont.com/digital-7.font" target="_blank">Digital-7</a><span>— Classic 7-segment display look</span></div>
+        <div class="font-link"><a href="https://www.dafont.com/ds-digital.font" target="_blank">DS-Digital</a><span>— Clean digital readout style</span></div>
+        <div class="font-link"><a href="https://fonts.google.com/specimen/Orbitron" target="_blank">Orbitron</a><span>— Futuristic geometric sans</span></div>
+      </div>
+    </section>
+
+    <!-- Daemon -->
+    <section>
+      <h2>Running as Daemon</h2>
+      <p style="margin-bottom:14px;">Create <code>/etc/systemd/system/ttlcd.service</code>:</p>
+      <div class="systemd-block">
+        <pre><code>[Unit]
+Description=Thermaltake LCD Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/path/to/ttlcd /path/to/config.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+      </div>
+      <pre style="margin-top:8px;"><code>sudo systemctl enable ttlcd.service
+sudo systemctl start ttlcd.service</code></pre>
+    </section>
+
+    <!-- Troubleshooting -->
+    <section>
+      <h2>Troubleshooting</h2>
+      <div style="border: 1px solid var(--border);">
+        <div class="trouble-item">
+          <span class="trouble-label">BLACK SCREEN</span>
+          <span class="trouble-desc">Check console for "Device initialization sequence completed"</span>
+        </div>
+        <div class="trouble-item">
+          <span class="trouble-label">USB TIMEOUT</span>
+          <span class="trouble-desc">Detailed libusb error messages printed to console</span>
+        </div>
+        <div class="trouble-item">
+          <span class="trouble-label">NO FONT</span>
+          <span class="trouble-desc">Falls back to Hershey — check font path and FreeType support</span>
+        </div>
+        <div class="trouble-item">
+          <span class="trouble-label">PERMISSION</span>
+          <span class="trouble-desc">Run with <code>sudo</code> for USB device access</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Credits -->
+    <section>
+      <h2>Credits &amp; License</h2>
+      <p>Originally inspired by the Python driver by <a href="https://github.com/bekindpleaserewind/ttlcd" style="color:var(--cyan);text-decoration:none;">bekindpleaserewind</a>. Ported and enhanced in C++ for better performance and features.</p>
+      <p style="margin-top:10px; color: var(--text-dim); font-size:14px;">License: MIT — feel free to modify and share!</p>
+    </section>
+
+    <footer>
+      <span>ttlcd-cpp &nbsp;·&nbsp; Last updated: February 22, 2026</span>
+      <span>MIT LICENSE</span>
+    </footer>
+
+  </div>
+
+  <script>
+    function showTab(name, btn) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>
