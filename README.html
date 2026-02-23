@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ttlcd-cpp — Thermaltake USB LCD Driver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e1014;
+      --surface:   #161920;
+      --surface2:  #1c2028;
+      --border:    #262b35;
+      --border2:   #303540;
+      --text:      #d4dae8;
+      --text-muted:#7a8399;
+      --text-dim:  #4a5368;
+      --accent:    #4af0a0;
+      --accent2:   #38c47e;
+      --blue:      #5b9cf6;
+      --amber:     #f0a640;
+      --red:       #f06060;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+      --display:   'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+
+    .page { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    /* Hero */
+    .hero { margin-bottom: 40px; }
+
+    h1 {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: clamp(28px, 5vw, 44px);
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .tagline {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 20px;
+    }
+
+    .badge {
+      display: inline-flex;
+      font-family: var(--mono);
+      font-size: 11px;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--border2);
+    }
+
+    .badge-label {
+      background: var(--surface2);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-right: 1px solid var(--border2);
+    }
+
+    .badge-value { padding: 3px 8px; font-weight: 500; }
+    .badge-value.green  { background: #1a3d2b; color: var(--accent); }
+    .badge-value.blue   { background: #1a2a40; color: var(--blue); }
+    .badge-value.amber  { background: #2e2010; color: var(--amber); }
+    .badge-value.gray   { background: var(--surface2); color: var(--text); }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--border2), transparent);
+      margin: 32px 0;
+    }
+
+    .description {
+      border-left: 3px solid var(--accent);
+      padding: 12px 20px;
+      background: #111a14;
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 32px;
+    }
+
+    /* Stats */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 40px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .stat {
+      background: var(--surface);
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .stat-value {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    /* Sections */
+    section { margin-bottom: 36px; }
+
+    h2 {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: 18px;
+      color: #fff;
+      letter-spacing: -0.3px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2 .icon {
+      width: 22px;
+      height: 22px;
+      background: #1a3d2b;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 20px 0 10px;
+    }
+
+    p { margin-bottom: 10px; }
+    p:last-child { margin-bottom: 0; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Features */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .feature {
+      background: var(--surface);
+      padding: 12px 16px;
+      font-size: 13.5px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      transition: background 0.15s;
+    }
+
+    .feature:hover { background: var(--surface2); }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    /* Code */
+    .code-wrap { position: relative; margin: 8px 0; }
+
+    pre {
+      background: #0a0d10;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 16px 48px 16px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      color: #a8c7a8;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover { background: var(--border2); color: var(--text); }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent2); }
+
+    code { font-family: var(--mono); font-size: 12.5px; }
+
+    p code, li code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--blue);
+      font-size: 12px;
+    }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: -1px;
+    }
+
+    .tab {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 18px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      border-radius: 4px 4px 0 0;
+      transition: all 0.15s;
+    }
+
+    .tab:hover { color: var(--text); }
+
+    .tab.active {
+      background: #0a0d10;
+      border-color: var(--border);
+      border-bottom-color: #0a0d10;
+      color: var(--accent);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .data-table thead tr { background: var(--surface2); }
+
+    .data-table th {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr { background: var(--surface); transition: background 0.1s; }
+    .data-table tbody tr:hover { background: var(--surface2); }
+
+    .td-key  { font-family: var(--mono); font-size: 12px; color: var(--blue); white-space: nowrap; }
+    .td-type { font-family: var(--mono); font-size: 11px; color: var(--amber); }
+    .td-desc { color: var(--text-muted); font-size: 13px; }
+
+    /* Placeholder list */
+    .placeholder-list {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .pl-key, .pl-desc {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
+    }
+
+    .pl-key:last-of-type, .pl-desc:last-child { border-bottom: none; }
+
+    .pl-key {
+      background: var(--surface2);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      white-space: nowrap;
+      border-right: 1px solid var(--border);
+    }
+
+    .pl-desc { background: var(--surface); color: var(--text-muted); }
+
+    /* Collapsible */
+    details {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    summary {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      padding: 12px 16px;
+      background: var(--surface);
+      cursor: pointer;
+      color: var(--text);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.15s;
+      user-select: none;
+    }
+
+    summary:hover { background: var(--surface2); }
+    summary::before { content: '▸'; color: var(--text-dim); font-size: 10px; transition: transform 0.2s; }
+    details[open] summary::before { transform: rotate(90deg); }
+    details[open] summary { border-bottom: 1px solid var(--border); }
+    .details-body { padding: 16px; background: #0a0d10; }
+
+    /* Troubleshooting */
+    .trouble-grid {
+      display: grid;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .trouble-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      background: var(--surface);
+      transition: background 0.1s;
+    }
+
+    .trouble-row:hover { background: var(--surface2); }
+
+    .trouble-tag {
+      background: var(--surface2);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--amber);
+      padding: 12px 14px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+    }
+
+    .trouble-desc {
+      padding: 12px 16px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+    }
+
+    /* Systemd */
+    .systemd pre { color: #f0c870; }
+
+    /* Footer */
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-left {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .footer-left strong { color: var(--text-muted); }
+    .footer-right { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+    /* Animations */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadein 0.4s ease forwards;
+    }
+
+    @keyframes fadein { to { opacity: 1; transform: none; } }
+
+    .fade-in:nth-child(1)  { animation-delay: 0.05s; }
+    .fade-in:nth-child(2)  { animation-delay: 0.10s; }
+    .fade-in:nth-child(3)  { animation-delay: 0.15s; }
+    .fade-in:nth-child(4)  { animation-delay: 0.20s; }
+    .fade-in:nth-child(5)  { animation-delay: 0.25s; }
+    .fade-in:nth-child(6)  { animation-delay: 0.30s; }
+    .fade-in:nth-child(7)  { animation-delay: 0.35s; }
+    .fade-in:nth-child(8)  { animation-delay: 0.40s; }
+    .fade-in:nth-child(9)  { animation-delay: 0.45s; }
+    .fade-in:nth-child(10) { animation-delay: 0.50s; }
+    .fade-in:nth-child(11) { animation-delay: 0.55s; }
+    .fade-in:nth-child(12) { animation-delay: 0.60s; }
+
+    @media (max-width: 580px) {
+      .feature-grid { grid-template-columns: 1fr; }
+      .trouble-row { grid-template-columns: 1fr; }
+      .trouble-tag { border-right: none; border-bottom: 1px solid var(--border); }
+      .stats-bar { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero fade-in">
+    <h1>ttlcd<span>-cpp</span></h1>
+    <p class="tagline">// Thermaltake Tower 200 · USB LCD driver · Linux · C++20</p>
+    <div class="badges">
+      <span class="badge"><span class="badge-label">lang</span><span class="badge-value blue">C++20</span></span>
+      <span class="badge"><span class="badge-label">platform</span><span class="badge-value gray">Linux</span></span>
+      <span class="badge"><span class="badge-label">license</span><span class="badge-value green">MIT</span></span>
+      <span class="badge"><span class="badge-label">build</span><span class="badge-value green">passing</span></span>
+      <span class="badge"><span class="badge-label">packages</span><span class="badge-value amber">deb · rpm · pkg</span></span>
+      <span class="badge"><span class="badge-label">version</span><span class="badge-value gray">1.0.0</span></span>
+    </div>
+  </div>
+
+  <!-- Description -->
+  <div class="description fade-in">
+    Modern C++ port of the original Python driver for the <strong>Thermaltake Tower 200</strong> (and compatible models) 3.9-inch USB LCD panel at 480×128 resolution. Provides a highly customizable, performant system monitoring dashboard with live updates, custom TTF fonts, bar graphs, network speed, and more — running natively on Linux with full USB protocol support.
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar fade-in">
+    <div class="stat"><span class="stat-label">Resolution</span><span class="stat-value">480×128</span></div>
+    <div class="stat"><span class="stat-label">Panel Size</span><span class="stat-value">3.9″</span></div>
+    <div class="stat"><span class="stat-label">Standard</span><span class="stat-value">C++20</span></div>
+    <div class="stat"><span class="stat-label">Interface</span><span class="stat-value">USB HID</span></div>
+    <div class="stat"><span class="stat-label">Config</span><span class="stat-value">JSON</span></div>
+  </div>
+
+  <!-- Features -->
+  <section class="fade-in">
+    <h2><span class="icon">✦</span> Features</h2>
+    <div class="feature-grid">
+      <div class="feature"><span class="dot"></span>Live CPU &amp; RAM usage bars with configurable dimensions</div>
+      <div class="feature"><span class="dot"></span>Real-time network upload/download speed display</div>
+      <div class="feature"><span class="dot"></span>Custom TTF fonts via OpenCV FreeType (Digital-7, Orbitron…)</div>
+      <div class="feature"><span class="dot"></span>Dynamic text widget with powerful format placeholders</div>
+      <div class="feature"><span class="dot"></span>Full JSON configuration — layout, colors, widgets</div>
+      <div class="feature"><span class="dot"></span>Complete USB init sequence &amp; robust libusb error reporting</div>
+      <div class="feature"><span class="dot"></span>Graceful fallback — shows ERR if a data source fails</div>
+      <div class="feature"><span class="dot"></span>Temporary image rendering with automatic cleanup</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Requirements -->
+  <section class="fade-in">
+    <h2><span class="icon">◈</span> Requirements</h2>
+    <h3>Runtime</h3>
+    <div class="code-wrap">
+      <pre><code>sudo apt install libusb-1.0-0 libopencv-core4.5 libopencv-imgproc4.5 \
+    libopencv-imgcodecs4.5 libopencv-highgui4.5</code></pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <h3>Build</h3>
+    <div class="code-wrap">
+      <pre><code>sudo apt install build-essential pkg-config libusb-1.0-0-dev \
+    libopencv-dev libfreetype6-dev</code></pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+  </section>
+
+  <!-- Building -->
+  <section class="fade-in">
+    <h2><span class="icon">⬡</span> Building</h2>
+    <div class="code-wrap">
+      <pre><code>make -j$(nproc)           # build the binary
+sudo ./ttlcd config.json  # run (USB requires sudo)</code></pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <p style="margin-top:10px; font-size:13.5px; color:var(--text-muted);">
+      The makefile auto-generates <code>Version.hpp</code>, <code>CMakeLists.txt</code>, all packaging files, and the GitHub Actions workflow on every build.
+    </p>
+    <h3>Clean targets</h3>
+    <div class="code-wrap">
+      <pre><code>make clean            # remove build artifacts
+make clean-packaging  # remove generated packaging files
+make clean-all        # both</code></pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="fade-in">
+    <h2><span class="icon">↓</span> Install</h2>
+    <div class="tab-bar">
+      <button class="tab active" onclick="showTab('deb', this)">Debian / Ubuntu</button>
+      <button class="tab" onclick="showTab('rpm', this)">Fedora / RHEL</button>
+      <button class="tab" onclick="showTab('arch', this)">Arch Linux</button>
+    </div>
+    <div id="tab-deb" class="tab-panel active">
+      <div class="code-wrap">
+        <pre><code>wget https://github.com/YOURUSERNAME/ttlcd/releases/latest/download/ttlcd-v1.0.0-amd64.deb
+sudo dpkg -i ttlcd-v1.0.0-amd64.deb</code></pre>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+    </div>
+    <div id="tab-rpm" class="tab-panel">
+      <div class="code-wrap">
+        <pre><code>sudo rpm -i ttlcd-1.0.0-1.x86_64.rpm</code></pre>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+    </div>
+    <div id="tab-arch" class="tab-panel">
+      <div class="code-wrap">
+        <pre><code># Download PKGBUILD.tar.gz from Releases, then:
+tar xzf ttlcd-v1.0.0-PKGBUILD.tar.gz
+makepkg -si</code></pre>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Release -->
+  <section class="fade-in">
+    <h2><span class="icon">⟳</span> Release</h2>
+    <p style="color:var(--text-muted); font-size:13.5px; margin-bottom:10px;">Push a version tag to trigger the GitHub Actions workflow — it builds and publishes <code>.deb</code>, <code>.rpm</code>, and <code>PKGBUILD</code> automatically as release assets.</p>
+    <div class="code-wrap">
+      <pre><code>git tag v1.0.0
+git push origin v1.0.0</code></pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Configuration -->
+  <section class="fade-in">
+    <h2><span class="icon">≡</span> Configuration</h2>
+    <p style="margin-bottom:14px; color:var(--text-muted); font-size:13.5px;">All layout and widget settings are controlled via <code>config.json</code> passed at runtime.</p>
+
+    <details open>
+      <summary>Full config.json example</summary>
+      <div class="details-body">
+        <div class="code-wrap" style="margin:0;">
+          <pre><code>{
+  "idVendor":   9802,
+  "idProduct":  9021,
+  "use":        "NODE",
+  "orientation":"TOP",
+  "background": "./bg.jpg",
+
+  "font_size":  14,
+  "font_color": [255, 255, 255],
+  "font_file":  "fonts/Digital-7.ttf",
+
+  "enable_date":           true,
+  "date_x": 20,            "date_y": 10,   "date_font_size": 20,
+
+  "enable_time":           true,
+  "time_x": 20,            "time_y": 40,   "time_font_size": 32,
+
+  "enable_cpu_bar":        true,
+  "cpu_bar_x": 20,         "cpu_bar_y": 80,
+  "cpu_bar_width": 440,    "cpu_bar_height": 30,
+
+  "enable_ram_bar":        true,
+  "ram_bar_x": 20,         "ram_bar_y": 120,
+  "ram_bar_width": 440,    "ram_bar_height": 30,
+
+  "enable_network":        true,
+  "network_x": 20,         "network_y": 160,  "network_font_size": 28,
+
+  "enable_loadavg":        true,
+  "loadavg_x": 20,         "loadavg_y": 200,
+
+  "enable_dynamic_text":   true,
+  "dynamic_text_x": 20,    "dynamic_text_y": 230,
+  "dynamic_text_font_size": 24,
+  "dynamic_text_font_color": [0, 255, 255],
+  "format": "CPU: {cpu_percent}% | RAM: {ram_percent}% | ↑{net_up} ↓{net_down} | {time}"
+}</code></pre>
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+        </div>
+      </div>
+    </details>
+
+    <h3 style="margin-top:20px;">Key reference</h3>
+    <table class="data-table">
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="td-key">idVendor / idProduct</td><td class="td-type">int</td><td class="td-desc">USB vendor &amp; product IDs for your LCD panel</td></tr>
+        <tr><td class="td-key">orientation</td><td class="td-type">string</td><td class="td-desc"><code>"TOP"</code> or <code>"BOTTOM"</code> — physical mount orientation</td></tr>
+        <tr><td class="td-key">background</td><td class="td-type">string</td><td class="td-desc">Path to background image (jpg/png)</td></tr>
+        <tr><td class="td-key">font_file</td><td class="td-type">string</td><td class="td-desc">Path to custom TTF; falls back to Hershey if missing</td></tr>
+        <tr><td class="td-key">font_color</td><td class="td-type">[B,G,R]</td><td class="td-desc">Default text color — note OpenCV uses BGR order</td></tr>
+        <tr><td class="td-key">enable_*</td><td class="td-type">bool</td><td class="td-desc">Toggle any widget on or off</td></tr>
+        <tr><td class="td-key">*_x / *_y</td><td class="td-type">int</td><td class="td-desc">Widget position in pixels from top-left</td></tr>
+        <tr><td class="td-key">format</td><td class="td-type">string</td><td class="td-desc">Dynamic text format string using placeholders below</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Dynamic text placeholders</h3>
+    <div class="placeholder-list">
+      <span class="pl-key">{cpu_percent}</span><span class="pl-desc">CPU usage percentage</span>
+      <span class="pl-key">{ram_percent}</span><span class="pl-desc">RAM usage percentage</span>
+      <span class="pl-key">{net_up}</span><span class="pl-desc">Upload speed in KB/s</span>
+      <span class="pl-key">{net_down}</span><span class="pl-desc">Download speed in KB/s</span>
+      <span class="pl-key">{loadavg}</span><span class="pl-desc">Load average — 1 / 5 / 15 min</span>
+      <span class="pl-key">{time}</span><span class="pl-desc">Current time</span>
+      <span class="pl-key">{date}</span><span class="pl-desc">Current date</span>
+    </div>
+
+    <h3>Recommended fonts</h3>
+    <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:8px;">Place <code>.ttf</code> files in a <code>fonts/</code> directory next to the binary.</p>
+    <table class="data-table">
+      <thead><tr><th>Font</th><th>Style</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td class="td-key">Digital-7</td><td class="td-type">7-segment</td><td class="td-desc"><a href="https://www.dafont.com/digital-7.font">dafont.com</a></td></tr>
+        <tr><td class="td-key">DS-Digital</td><td class="td-type">Digital</td><td class="td-desc"><a href="https://www.dafont.com/ds-digital.font">dafont.com</a></td></tr>
+        <tr><td class="td-key">Orbitron</td><td class="td-type">Futuristic</td><td class="td-desc"><a href="https://fonts.google.com/specimen/Orbitron">Google Fonts</a></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Daemon -->
+  <section class="fade-in systemd">
+    <h2><span class="icon">⚙</span> Running as a Daemon</h2>
+    <p style="margin-bottom:12px; color:var(--text-muted); font-size:13.5px;">Create <code>/etc/systemd/system/ttlcd.service</code>:</p>
+    <div class="code-wrap">
+      <pre><code>[Unit]
+Description=Thermaltake LCD Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/ttlcd /etc/ttlcd/config.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-wrap" style="margin-top:8px;">
+      <pre><code>sudo systemctl enable --now ttlcd.service</code></pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+  </section>
+
+  <!-- Troubleshooting -->
+  <section class="fade-in">
+    <h2><span class="icon">!</span> Troubleshooting</h2>
+    <div class="trouble-grid">
+      <div class="trouble-row">
+        <span class="trouble-tag">Black screen</span>
+        <span class="trouble-desc">Check console for "Device initialization sequence completed"</span>
+      </div>
+      <div class="trouble-row">
+        <span class="trouble-tag">USB timeout</span>
+        <span class="trouble-desc">Detailed libusb error codes are printed to stderr</span>
+      </div>
+      <div class="trouble-row">
+        <span class="trouble-tag">No font</span>
+        <span class="trouble-desc">Falls back to Hershey — verify font path and FreeType support in your OpenCV build</span>
+      </div>
+      <div class="trouble-row">
+        <span class="trouble-tag">Permission denied</span>
+        <span class="trouble-desc">Run with <code>sudo</code>, or add a udev rule: <code>SUBSYSTEM=="usb", ATTR{idVendor}=="2653", MODE="0666"</code></span>
+      </div>
+      <div class="trouble-row">
+        <span class="trouble-tag">Wrong colors</span>
+        <span class="trouble-desc">OpenCV uses BGR order — color arrays are <code>[B, G, R]</code> not RGB</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Credits -->
+  <section class="fade-in">
+    <h2><span class="icon">♦</span> Credits &amp; License</h2>
+    <p style="font-size:13.5px;">Originally inspired by the Python driver by <a href="https://github.com/bekindpleaserewind/ttlcd">bekindpleaserewind</a>. Ported and enhanced in C++ for better performance and native Linux integration.</p>
+    <p style="margin-top:8px; font-size:13px; color:var(--text-dim);">Released under the <strong style="color:var(--text-muted);">MIT License</strong> — free to use, modify, and redistribute.</p>
+  </section>
+
+  <footer class="fade-in">
+    <div class="footer-left"><strong>ttlcd-cpp</strong> &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; Updated Feb 2026</div>
+    <div class="footer-right">MIT &nbsp;·&nbsp; Linux only</div>
+  </footer>
+
+</div>
+
+<script>
+  function copyCode(btn) {
+    const pre = btn.closest('.code-wrap').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText.trim()).then(() => {
+      btn.textContent = 'copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+
+  function showTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>
