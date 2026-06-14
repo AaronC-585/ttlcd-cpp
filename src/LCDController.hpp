@@ -37,22 +37,31 @@ private:
     int packet_delay_ms_ = 0;
     int ping_packet_delay_ms_ = 0;
     int loop_interval_ms_ = 1000;
-    int update_interval_sec_ = 10;
+    int dashboard_interval_sec_ = 10;
 
+    bool enable_dashboard_ = true;
     bool enable_ping_ = true;
     int ping_interval_sec_ = 3;
     bool first_upload_pending_ = true;
     std::atomic<bool> uploading_{false};
+    std::vector<uint8_t> last_jpeg_;
 
     std::string save_jpeg_path_;
 
     std::mutex usb_mutex_;
     std::thread keepalive_thread_;
     std::atomic<bool> running_{false};
+    std::atomic<bool> connected_{false};
+    bool device_wait_logged_ = false;
 
     std::chrono::steady_clock::time_point last_ping_;
     std::chrono::steady_clock::time_point last_display_update_;
 
+    bool is_device_present();
+    bool try_connect();
+    void try_reconnect();
+    void disconnect();
+    void disconnect_unlocked();
     void read_string_descriptors();
     void start_keepalive_thread();
     void stop_keepalive_thread();
@@ -69,7 +78,7 @@ private:
     void confirm_after_upload();
     void confirm_after_upload_unlocked();
     void send_image(const std::vector<uint8_t>& jpeg_data);
-    void initialize_device();
+    void initialize_device_unlocked();
     void send_keepalive_unlocked();
     void update_display();
     bool should_send_ping() const;
@@ -81,6 +90,7 @@ public:
 
     void tick();
     int get_loop_interval_ms() const { return loop_interval_ms_; }
-    int get_update_interval() const { return update_interval_sec_; }
+    int get_dashboard_interval() const { return dashboard_interval_sec_; }
+    int get_update_interval() const { return dashboard_interval_sec_; }
     int get_ping_interval() const { return ping_interval_sec_; }
 };

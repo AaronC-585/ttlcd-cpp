@@ -13,7 +13,8 @@
   
   "usb_timeout_ms": 30000,
   "packet_delay_ms": 1000,
-  "update_interval_sec": 2,
+  "enable_dashboard": true,
+  "dashboard_interval_sec": 2,
   
   "enable_ping": true,
   "ping_interval_sec": 30,

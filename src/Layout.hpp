@@ -53,11 +53,21 @@ public:
     int scale_design_y(int y) const;
     int scale_design_size(int px) const;
 
+    cv::Mat build_lcd_background() const;
+    cv::Mat finalize_lcd_frame(const cv::Mat& frame) const;
+    void init_lcd_frame();
+    bool update_lcd_frame_incremental();
+
 protected:
     void load_background();
     void add_widget(std::unique_ptr<Widget> widget);
     cv::Mat compose_frame();
     std::vector<uint8_t> encode_jpeg(const cv::Mat& image) const;
+
+    cv::Mat lcd_frame_;
+    cv::Mat lcd_background_;
+    bool lcd_frame_ready_ = false;
+    std::vector<uint8_t> last_jpeg_;
 };
 
 class NodeLayout : public Layout {

@@ -5,38 +5,55 @@
   "jpeg_optimize": false,
   "use": "NODE",
   "orientation": "TOP",
-  "background": "./backgrounds/blk.jpg",
+  "background": "./backgrounds/permanent-headers.jpg",
 
   "font_file": "embedded",
-  "font_size": 20,
-  "font_scale_percent": 100,
+  "font_size": 40,
+  "font_scale_percent": 44,
   "font_color": [0, 255, 255],
   "temp_unit": "F",
 
-  "loop_interval_ms": 1000,
-  "ping_interval_sec": 8,
+  "loop_interval_ms": 500,
+  "ping_interval_sec": 3,
   "ping_packet_delay_ms": 0,
-  "update_interval_sec": 10,
-  "packet_delay_ms": 0,
+  "enable_dashboard": true,
+  "dashboard_interval_sec": 2,
+  "packet_delay_ms": 1,
   "enable_ping": true,
   "save_jpeg": true,
 
   "widgets": [
     {
-      "type": "text",
+      "type": "all_temps",
       "enable": true,
-      "x": 6,
-      "y": 82,
-      "text": "min | max",
-      "font_size": 20,
+      "display_mode": "fraction",
+      "x": 8,
+      "y": 67,
+      "font_size": 40,
       "font_color": [0, 255, 255]
     },
     {
-      "type": "all_temps",
+      "type": "cpu_percent",
       "enable": true,
-      "x": 4,
-      "y": 54,
-      "font_size": 20,
+      "x": 168,
+      "y": 67,
+      "font_size": 40,
+      "font_color": [0, 255, 255]
+    },
+    {
+      "type": "ram_percent",
+      "enable": true,
+      "x": 168,
+      "y": 107,
+      "font_size": 40,
+      "font_color": [0, 255, 255]
+    },
+    {
+      "type": "network",
+      "enable": true,
+      "x": 308,
+      "y": 67,
+      "font_size": 40,
       "font_color": [0, 255, 255]
     }
   ]

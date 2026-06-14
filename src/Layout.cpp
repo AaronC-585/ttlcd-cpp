@@ -82,11 +82,11 @@ Layout::Layout(const json& config) : config_(config) {
 
     const std::string font_file = config_.value("font_file", "embedded");
     if (font_file == "embedded") {
-        font_data_.assign(EmbeddedFont::comic_ttf,
-                          EmbeddedFont::comic_ttf + EmbeddedFont::comic_ttf_size);
+        font_data_.assign(EmbeddedFont::times_new_roman_ttf,
+                          EmbeddedFont::times_new_roman_ttf + EmbeddedFont::times_new_roman_ttf_size);
         ft2_->loadFontData(reinterpret_cast<char*>(font_data_.data()),
                            font_data_.size(), 0);
-        std::cout << "Loaded embedded font (comic.ttf, "
+        std::cout << "Loaded embedded font (Times New Roman, "
                   << font_data_.size() << " bytes)\n";
     } else if (!font_file.empty()) {
         if (std::filesystem::exists(font_file)) {
@@ -95,8 +95,8 @@ Layout::Layout(const json& config) : config_(config) {
         } else {
             std::cerr << "Warning: font file not found: " << font_file
                       << " — falling back to embedded font\n";
-            font_data_.assign(EmbeddedFont::comic_ttf,
-                              EmbeddedFont::comic_ttf + EmbeddedFont::comic_ttf_size);
+            font_data_.assign(EmbeddedFont::times_new_roman_ttf,
+                              EmbeddedFont::times_new_roman_ttf + EmbeddedFont::times_new_roman_ttf_size);
             ft2_->loadFontData(reinterpret_cast<char*>(font_data_.data()),
                                font_data_.size(), 0);
         }
@@ -125,15 +125,10 @@ void Layout::warmup() {
         load_background();
     }
     refresh_widgets();
-
-    cv::Mat frame;
-    cv::resize(background_, frame, cv::Size(render_width(), render_height()));
-    for (auto& widget : widgets_) {
-        widget->draw(frame, this);
-    }
+    init_lcd_frame();
 }
 
-cv::Mat Layout::compose_frame() {
+cv::Mat Layout::build_lcd_background() const {
     if (background_.empty()) {
         throw std::runtime_error("Background not loaded");
     }
@@ -143,11 +138,10 @@ cv::Mat Layout::compose_frame() {
 
     cv::Mat frame;
     cv::resize(background_, frame, cv::Size(rw, rh));
+    return frame;
+}
 
-    for (auto& widget : widgets_) {
-        widget->draw(frame, this);
-    }
-
+cv::Mat Layout::finalize_lcd_frame(const cv::Mat& frame) const {
     cv::Mat resized;
     cv::resize(frame, resized, cv::Size(LCD_WIDTH, LCD_HEIGHT));
 
@@ -166,6 +160,63 @@ cv::Mat Layout::compose_frame() {
     }
 
     return resized;
+}
+
+void Layout::init_lcd_frame() {
+    lcd_background_ = build_lcd_background();
+    lcd_frame_ = lcd_background_.clone();
+
+    for (auto& widget : widgets_) {
+        widget->draw(lcd_frame_, this);
+        widget->mark_drawn();
+    }
+
+    lcd_frame_ready_ = true;
+}
+
+bool Layout::update_lcd_frame_incremental() {
+    if (!lcd_frame_ready_ || lcd_frame_.empty()) {
+        init_lcd_frame();
+        return true;
+    }
+
+    const cv::Rect bounds(0, 0, lcd_frame_.cols, lcd_frame_.rows);
+    bool changed = false;
+
+    for (auto& widget : widgets_) {
+        if (!widget->needs_redraw()) {
+            continue;
+        }
+
+        cv::Rect patch = widget->patch_rect(this) & bounds;
+        if (patch.width > 0 && patch.height > 0) {
+            lcd_background_(patch).copyTo(lcd_frame_(patch));
+        }
+
+        widget->draw(lcd_frame_, this);
+        widget->mark_drawn();
+        changed = true;
+    }
+
+    return changed;
+}
+
+cv::Mat Layout::compose_frame() {
+    if (background_.empty()) {
+        throw std::runtime_error("Background not loaded");
+    }
+
+    const int rw = render_width();
+    const int rh = render_height();
+
+    cv::Mat frame;
+    cv::resize(background_, frame, cv::Size(rw, rh));
+
+    for (auto& widget : widgets_) {
+        widget->draw(frame, this);
+    }
+
+    return finalize_lcd_frame(frame);
 }
 
 std::vector<uint8_t> Layout::encode_jpeg(const cv::Mat& image) const {
@@ -188,15 +239,18 @@ std::vector<uint8_t> Layout::render_jpeg() {
 
     refresh_widgets();
 
-    const cv::Mat frame = compose_frame();
-    std::vector<uint8_t> jpeg = encode_jpeg(frame);
-    patch_jpeg_dpi(jpeg, jpeg_dpi());
+    if (!update_lcd_frame_incremental() && !last_jpeg_.empty()) {
+        return last_jpeg_;
+    }
 
-    if (jpeg.size() < 4 || jpeg[0] != 0xFF || jpeg[1] != 0xD8) {
+    last_jpeg_ = encode_jpeg(finalize_lcd_frame(lcd_frame_));
+    patch_jpeg_dpi(last_jpeg_, jpeg_dpi());
+
+    if (last_jpeg_.size() < 4 || last_jpeg_[0] != 0xFF || last_jpeg_[1] != 0xD8) {
         throw std::runtime_error("JPEG encode did not produce a valid image");
     }
 
-    return jpeg;
+    return last_jpeg_;
 }
 
 std::string Layout::render(const std::string& output_path) {
@@ -245,6 +299,10 @@ bool NodeLayout::setup() {
                 widget->set_bar_orientation(BarOrientation::Horizontal);
                 widget->set_bar_direction(w_config.value("direction", "right"));
                 widget->set_bar_size(w_config.value("width", 440), w_config.value("height", 30));
+            } else if (type == "cpu_percent") {
+                json cfg = w_config;
+                cfg["show_percent"] = true;
+                widget = std::make_unique<CpuUtilizationWidget>(cfg);
             } else if (type == "cpu_core") {
                 widget = std::make_unique<CpuCoreWidget>(w_config);
             } else if (type == "cpu_freq") {
@@ -258,6 +316,10 @@ bool NodeLayout::setup() {
                 widget->set_type(WidgetType::Bar);
                 widget->set_bar_orientation(BarOrientation::Horizontal);
                 widget->set_bar_size(w_config.value("width", 440), w_config.value("height", 30));
+            } else if (type == "ram_percent") {
+                json cfg = w_config;
+                cfg["show_percent"] = true;
+                widget = std::make_unique<RamUtilizationBarWidget>(cfg);
             } else if (type == "memory_details") {
                 widget = std::make_unique<MemoryDetailsWidget>(w_config);
             } else if (type == "swap_usage") {

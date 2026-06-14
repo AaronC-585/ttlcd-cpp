@@ -31,11 +31,19 @@ protected:
     cv::Scalar bar_fill_ = cv::Scalar(0, 255, 255);
     cv::Scalar bar_outline_ = cv::Scalar(0, 0, 255);
 
+    std::string displayed_value_;
+    bool drawn_once_ = false;
+
 public:
     Widget(const json& config);
     virtual ~Widget() = default;
     virtual void tick() = 0;
     virtual void draw(cv::Mat& image, Layout* layout = nullptr);
+
+    bool needs_redraw() const;
+    void mark_drawn();
+    cv::Rect dirty_rect(Layout* layout) const;
+    cv::Rect patch_rect(Layout* layout) const;
 
     void set_position(int x, int y) { x_ = x; y_ = y; }
     void set_font_size(int s) { font_size_ = s; }
@@ -44,11 +52,14 @@ public:
     void set_bar_orientation(BarOrientation o) { bar_ori_ = o; }
     void set_bar_direction(const std::string& d) { bar_direction_ = d; }
     void set_bar_size(int w, int h) { bar_width_ = w; bar_height_ = h; }
-    void set_bar_scale(int s) { bar_scale_ = s; }  // Now valid
+    void set_bar_scale(int s) { bar_scale_ = s; }
     void set_bar_colors(cv::Scalar fill, cv::Scalar outline) {
         bar_fill_ = fill;
         bar_outline_ = outline;
     }
+
+private:
+    cv::Rect dirty_rect_for(Layout* layout, const std::string& text) const;
 };
 
 class DateWidget : public Widget {
@@ -81,6 +92,7 @@ private:
     };
     CpuTimes prev_;
     bool initialized_ = false;
+    bool show_percent_ = false;
     std::chrono::steady_clock::time_point last_tick_;
     std::chrono::seconds interval_{1};
     CpuTimes read_cpu_times();
@@ -91,6 +103,7 @@ public:
 
 class RamUtilizationBarWidget : public Widget {
 private:
+    bool show_percent_ = false;
     std::chrono::steady_clock::time_point last_tick_;
     std::chrono::seconds interval_{1};
 public:
@@ -374,14 +387,16 @@ private:
 
     std::vector<TempSensor> sensors_;
     bool discovered_ = false;
+    std::string display_mode_ = "inline";
     std::chrono::steady_clock::time_point last_tick_;
-    std::chrono::seconds interval_{2};
+    std::chrono::seconds interval_{1};
 
     static double read_temp_celsius(const std::string& path);
     static std::string read_file_trimmed(const std::string& path);
     void discover_sensors();
     void update_readings();
     static std::string format_summary(double min_c, double max_c);
+    static std::string format_fraction(double min_c, double max_c);
 
 public:
     AllTempSensorsWidget(const json& c);

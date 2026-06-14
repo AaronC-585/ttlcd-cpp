@@ -37,7 +37,9 @@ LCDController::LCDController(const std::string& config_path) {
     packet_delay_ms_ = config.value("packet_delay_ms", 0);
     ping_packet_delay_ms_ = config.value("ping_packet_delay_ms", 0);
     loop_interval_ms_ = config.value("loop_interval_ms", 1000);
-    update_interval_sec_ = config.value("update_interval_sec", 10);
+    enable_dashboard_ = config.value("enable_dashboard", true);
+    dashboard_interval_sec_ = config.value("dashboard_interval_sec",
+        config.value("update_interval_sec", 10));
 
     enable_ping_ = config.value("enable_ping", true);
     ping_interval_sec_ = config.value("ping_interval_sec", 2);
@@ -58,7 +60,8 @@ LCDController::LCDController(const std::string& config_path) {
               << "  Image packet delay: " << packet_delay_ms_ << "ms\n"
               << "  Ping packet delay: " << ping_packet_delay_ms_ << "ms\n"
               << "  Loop interval: " << loop_interval_ms_ << "ms\n"
-              << "  Display update interval: " << update_interval_sec_ << "s\n"
+              << "  Dashboard enabled: " << (enable_dashboard_ ? "yes" : "no") << "\n"
+              << "  Dashboard interval: " << dashboard_interval_sec_ << "s\n"
               << "  Ping enabled: " << (enable_ping_ ? "yes" : "no") << "\n"
               << "  Keep-alive interval: " << ping_interval_sec_ << "s\n";
 
@@ -66,27 +69,6 @@ LCDController::LCDController(const std::string& config_path) {
     if (r < 0) {
         throw std::runtime_error("Failed to initialize libusb: " + libusb_error_string(r));
     }
-
-    dev_handle_ = libusb_open_device_with_vid_pid(usb_ctx_, vendor_id_, product_id_);
-    if (!dev_handle_) {
-        throw std::runtime_error("Thermaltake LCD device not found. Check USB connection and permissions.");
-    }
-
-    if (libusb_kernel_driver_active(dev_handle_, 0) == 1) {
-        libusb_detach_kernel_driver(dev_handle_, 0);
-    }
-    if (libusb_kernel_driver_active(dev_handle_, 1) == 1) {
-        libusb_detach_kernel_driver(dev_handle_, 1);
-    }
-
-    libusb_set_configuration(dev_handle_, 1);
-    libusb_claim_interface(dev_handle_, 0);
-    libusb_claim_interface(dev_handle_, 1);
-
-    std::cout << "Connected to Thermaltake LCD (VID:0x" << std::hex << vendor_id_
-              << " PID:0x" << product_id_ << ")" << std::dec << std::endl;
-
-    initialize_device();
 
     std::string use = config.value("use", "NODE");
     if (use == "NODE") {
@@ -104,22 +86,131 @@ LCDController::LCDController(const std::string& config_path) {
     running_ = true;
     start_keepalive_thread();
 
-    std::cout << "LCDController initialized successfully.\n";
+    if (try_connect()) {
+        std::cout << "LCDController initialized successfully.\n";
+    } else {
+        std::cout << "LCD device not found — waiting for connection...\n";
+        device_wait_logged_ = true;
+    }
 }
 
 LCDController::~LCDController() {
     stop_keepalive_thread();
-    if (dev_handle_) {
-        libusb_release_interface(dev_handle_, 0);
-        libusb_release_interface(dev_handle_, 1);
-        libusb_close(dev_handle_);
-    }
+    disconnect();
     if (usb_ctx_) {
         libusb_exit(usb_ctx_);
     }
 }
 
+bool LCDController::is_device_present() {
+    libusb_device** list = nullptr;
+    const ssize_t count = libusb_get_device_list(usb_ctx_, &list);
+    if (count < 0) {
+        return false;
+    }
+
+    bool found = false;
+    for (ssize_t i = 0; i < count; ++i) {
+        libusb_device_descriptor desc{};
+        if (libusb_get_device_descriptor(list[i], &desc) != 0) {
+            continue;
+        }
+        if (desc.idVendor == static_cast<uint16_t>(vendor_id_) &&
+            desc.idProduct == static_cast<uint16_t>(product_id_)) {
+            found = true;
+            break;
+        }
+    }
+
+    libusb_free_device_list(list, 1);
+    return found;
+}
+
+bool LCDController::try_connect() {
+    if (connected_.load()) {
+        return true;
+    }
+    if (!is_device_present()) {
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(usb_mutex_);
+    if (connected_.load()) {
+        return true;
+    }
+
+    dev_handle_ = libusb_open_device_with_vid_pid(usb_ctx_, vendor_id_, product_id_);
+    if (!dev_handle_) {
+        return false;
+    }
+
+    try {
+        if (libusb_kernel_driver_active(dev_handle_, 0) == 1) {
+            libusb_detach_kernel_driver(dev_handle_, 0);
+        }
+        if (libusb_kernel_driver_active(dev_handle_, 1) == 1) {
+            libusb_detach_kernel_driver(dev_handle_, 1);
+        }
+
+        libusb_set_configuration(dev_handle_, 1);
+        libusb_claim_interface(dev_handle_, 0);
+        libusb_claim_interface(dev_handle_, 1);
+
+        std::cout << "Connected to Thermaltake LCD (VID:0x" << std::hex << vendor_id_
+                  << " PID:0x" << product_id_ << ")" << std::dec << std::endl;
+
+        initialize_device_unlocked();
+
+        connected_ = true;
+        first_upload_pending_ = true;
+        last_jpeg_.clear();
+        last_display_update_ = std::chrono::steady_clock::time_point{};
+        last_ping_ = std::chrono::steady_clock::now();
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to connect to LCD: " << e.what() << std::endl;
+        disconnect_unlocked();
+        return false;
+    }
+}
+
+void LCDController::try_reconnect() {
+    if (try_connect()) {
+        if (device_wait_logged_) {
+            std::cout << "LCD device connected.\n";
+            device_wait_logged_ = false;
+        }
+    } else if (!device_wait_logged_) {
+        std::cout << "LCD device not found — waiting for connection...\n";
+        device_wait_logged_ = true;
+    }
+}
+
+void LCDController::disconnect_unlocked() {
+    connected_ = false;
+    uploading_ = false;
+    first_upload_pending_ = true;
+
+    if (!dev_handle_) {
+        return;
+    }
+
+    libusb_release_interface(dev_handle_, 0);
+    libusb_release_interface(dev_handle_, 1);
+    libusb_close(dev_handle_);
+    dev_handle_ = nullptr;
+}
+
+void LCDController::disconnect() {
+    std::lock_guard<std::mutex> lock(usb_mutex_);
+    disconnect_unlocked();
+}
+
 void LCDController::tick() {
+    if (!connected_.load()) {
+        try_reconnect();
+    }
+
     if (should_update_display()) {
         update_display();
     }
@@ -128,7 +219,18 @@ void LCDController::tick() {
 void LCDController::update_display() {
     try {
         const std::vector<uint8_t> jpeg = layout_->render_jpeg();
-        last_display_update_ = std::chrono::steady_clock::now();
+
+        if (!connected_.load()) {
+            return;
+        }
+
+        if (!last_jpeg_.empty() && jpeg == last_jpeg_) {
+            last_display_update_ = std::chrono::steady_clock::now();
+            std::cout << "Dashboard unchanged, skipping upload\n";
+            return;
+        }
+
+        last_jpeg_ = jpeg;
 
         std::cout << "Dynamic JPEG: " << jpeg.size() << " bytes ("
                   << LCD_WIDTH << "x" << LCD_HEIGHT << ")\n";
@@ -143,9 +245,11 @@ void LCDController::update_display() {
         }
 
         send_image(jpeg);
+        last_display_update_ = std::chrono::steady_clock::now();
         std::cout << "Dashboard updated on LCD\n";
     } catch (const std::exception& e) {
         std::cerr << "Failed to update display: " << e.what() << std::endl;
+        disconnect();
     }
 }
 
@@ -181,6 +285,9 @@ void LCDController::send_image(const std::vector<uint8_t>& jpeg_data) {
     if (jpeg_data.empty()) {
         throw std::runtime_error("Rendered image is empty");
     }
+    if (!connected_.load() || !dev_handle_) {
+        throw std::runtime_error("LCD device not connected");
+    }
 
     uploading_ = true;
 
@@ -189,8 +296,12 @@ void LCDController::send_image(const std::vector<uint8_t>& jpeg_data) {
 
     std::cout << "Sending image: " << total_size << " bytes in " << iterations << " packets\n";
 
-    {
+    try {
         std::lock_guard<std::mutex> lock(usb_mutex_);
+        if (!connected_.load() || !dev_handle_) {
+            throw std::runtime_error("LCD device not connected");
+        }
+
         prepare_before_upload_unlocked();
 
         size_t offset = 0;
@@ -227,6 +338,9 @@ void LCDController::send_image(const std::vector<uint8_t>& jpeg_data) {
         }
 
         confirm_after_upload_unlocked();
+    } catch (...) {
+        uploading_ = false;
+        throw;
     }
 
     uploading_ = false;
@@ -247,7 +361,7 @@ void LCDController::read_string_descriptors() {
     }
 }
 
-void LCDController::initialize_device() {
+void LCDController::initialize_device_unlocked() {
     read_string_descriptors();
 
     const uint8_t init_sequence[][4] = {
@@ -260,13 +374,9 @@ void LCDController::initialize_device() {
     };
 
     for (const auto& cmd : init_sequence) {
-        {
-            std::lock_guard<std::mutex> lock(usb_mutex_);
-            send_padded_command(ep_write_, cmd, 4, INIT_PADDING, 0);
-        }
+        send_padded_command(ep_write_, cmd, 4, INIT_PADDING, 0);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        std::lock_guard<std::mutex> lock(usb_mutex_);
         if (!try_recv_packet(ep_read_, 1, 10000, 440)) {
             std::cerr << "Warning: Init handshake read timed out (continuing)\n";
         }
@@ -313,6 +423,9 @@ void LCDController::send_packet(const uint8_t* data, size_t length, uint8_t endp
                                  &transferred, usb_timeout_ms_);
 
     if (r != LIBUSB_SUCCESS) {
+        if (r == LIBUSB_ERROR_NO_DEVICE || r == LIBUSB_ERROR_PIPE) {
+            disconnect_unlocked();
+        }
         throw std::runtime_error("USB transfer failed: " + libusb_error_string(r));
     }
     if (transferred != static_cast<int>(length)) {
@@ -352,6 +465,9 @@ bool LCDController::try_recv_packet(uint8_t endpoint, size_t min_bytes, int time
     }
 
     if (r != LIBUSB_SUCCESS) {
+        if (r == LIBUSB_ERROR_NO_DEVICE || r == LIBUSB_ERROR_PIPE) {
+            disconnect_unlocked();
+        }
         throw std::runtime_error("USB receive failed: " + libusb_error_string(r));
     }
 
@@ -387,13 +503,15 @@ bool LCDController::should_send_ping() const {
 }
 
 bool LCDController::should_update_display() const {
+    if (!enable_dashboard_) return false;
+
     const auto now = std::chrono::steady_clock::now();
     if (last_display_update_.time_since_epoch().count() == 0) {
         return true;
     }
 
     const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_display_update_).count();
-    return elapsed >= update_interval_sec_;
+    return elapsed >= dashboard_interval_sec_;
 }
 
 void LCDController::send_keepalive_unlocked() {
@@ -418,15 +536,19 @@ void LCDController::keepalive_loop() {
     while (running_) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        if (!enable_ping_ || uploading_.load() || !should_send_ping()) {
+        if (!connected_.load() || !enable_ping_ || uploading_.load() || !should_send_ping()) {
             continue;
         }
 
         try {
             std::lock_guard<std::mutex> lock(usb_mutex_);
+            if (!connected_.load() || !dev_handle_) {
+                continue;
+            }
             send_keepalive_unlocked();
         } catch (const std::exception& e) {
             std::cerr << "Warning: Keep-alive failed: " << e.what() << std::endl;
+            disconnect_unlocked();
         }
     }
 }

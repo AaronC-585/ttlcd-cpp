@@ -632,6 +632,8 @@ git push origin v1.0.18</code></pre>
   "temp_unit": "F",
 
   "ping_interval_sec": 8,
+  "enable_dashboard": true,
+  "dashboard_interval_sec": 10,
   "update_interval_sec": 10,
   "enable_ping": true,
 
@@ -655,7 +657,9 @@ git push origin v1.0.18</code></pre>
         <tr><td class="td-key">jpeg_dpi</td><td class="td-type">int</td><td class="td-desc">Render DPI for dynamic JPEG (default <code>150</code>; design coords at 300 DPI)</td></tr>
         <tr><td class="td-key">temp_unit</td><td class="td-type">string</td><td class="td-desc"><code>"F"</code> or <code>"C"</code> — override with env <code>TTLCD_TEMP_UNIT</code></td></tr>
         <tr><td class="td-key">ping_interval_sec</td><td class="td-type">int</td><td class="td-desc">USB keep-alive interval (default 8s)</td></tr>
-        <tr><td class="td-key">update_interval_sec</td><td class="td-type">int</td><td class="td-desc">Dashboard JPEG refresh interval</td></tr>
+        <tr><td class="td-key">enable_dashboard</td><td class="td-type">bool</td><td class="td-desc">Enable periodic dashboard JPEG uploads (default <code>true</code>)</td></tr>
+        <tr><td class="td-key">dashboard_interval_sec</td><td class="td-type">int</td><td class="td-desc">Dashboard JPEG refresh interval in seconds</td></tr>
+        <tr><td class="td-key">update_interval_sec</td><td class="td-type">int</td><td class="td-desc">Legacy alias for <code>dashboard_interval_sec</code></td></tr>
         <tr><td class="td-key">orientation</td><td class="td-type">string</td><td class="td-desc"><code>TOP</code>, <code>BOTTOM</code>, <code>LEFT</code>, or <code>RIGHT</code></td></tr>
         <tr><td class="td-key">background</td><td class="td-type">string</td><td class="td-desc">Path to background image (jpg/png)</td></tr>
         <tr><td class="td-key">font_file</td><td class="td-type">string</td><td class="td-desc">TTF path, or <code>"embedded"</code> for built-in Comic font</td></tr>

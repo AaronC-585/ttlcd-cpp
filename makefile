@@ -47,14 +47,14 @@ WORKFLOW  := $(GH_WORKFLOW)/release.yml
 # =============================================================================
 # Embed font binary into C++ header
 # =============================================================================
-EMBED_FONT_SRC := fonts/comic.ttf
+EMBED_FONT_SRC := fonts/times-new-roman.ttf
 EMBED_FONT_HDR := src/EmbeddedFont.hpp
 
 embed-font: $(EMBED_FONT_HDR)
 
 $(EMBED_FONT_HDR): $(EMBED_FONT_SRC)
 	@echo "Generating $@ from $<"
-	@python3 -c 'from pathlib import Path; src=Path("$(EMBED_FONT_SRC)"); data=src.read_bytes(); out=Path("$(EMBED_FONT_HDR)"); lines=["#pragma once","","#include <cstddef>","#include <cstdint>","","namespace EmbeddedFont {",f"inline constexpr std::size_t comic_ttf_size = {len(data)};","inline const unsigned char comic_ttf[] = {"]; [lines.append("    "+", ".join(f"0x{b:02x}" for b in data[i:i+16])+",") for i in range(0,len(data),16)]; lines.extend(["};","","}  // namespace EmbeddedFont",""]); out.write_text("\\n".join(lines))'
+	@python3 scripts/embed_font.py $(EMBED_FONT_SRC) $(EMBED_FONT_HDR)
 
 # =============================================================================
 # Default target: build everything

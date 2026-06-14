@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         std::cout << "TTLCD running... Press Ctrl+C to stop.\n";
         std::cout << Version::get_full_info() << std::endl;
         std::cout << "Keep-alive ping/pong every " << lcd.get_ping_interval()
-                  << "s, display refresh every " << lcd.get_update_interval() << "s\n";
+                  << "s, dashboard refresh every " << lcd.get_dashboard_interval() << "s\n";
 
         while (true) {
             lcd.tick();

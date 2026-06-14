@@ -16,6 +16,44 @@
 #include <set>
 #include <algorithm>
 
+namespace {
+
+std::vector<std::string> split_text_lines(const std::string& text) {
+    std::vector<std::string> lines;
+    std::istringstream stream(text);
+    std::string line;
+    while (std::getline(stream, line)) {
+        lines.push_back(line);
+    }
+    if (lines.empty()) {
+        lines.push_back("");
+    }
+    return lines;
+}
+
+cv::Size measure_text_line(Layout* layout, const std::string& line, int draw_font_size, int& baseline) {
+    if (layout && !layout->get_ft2().empty()) {
+        return layout->get_ft2()->getTextSize(line, draw_font_size, -1, &baseline);
+    }
+
+    const double scale = draw_font_size / 24.0;
+    return cv::getTextSize(line, cv::FONT_HERSHEY_SIMPLEX, scale, 1, &baseline);
+}
+
+int text_line_stride(Layout* layout, int draw_font_size) {
+    const int gap = layout ? layout->scale_design_size(4) : 4;
+    return draw_font_size + std::max(2, gap);
+}
+
+cv::Rect text_line_rect(int draw_x, int draw_y, const cv::Size& size, int baseline, int pad = 3) {
+    return cv::Rect(draw_x - pad,
+                    draw_y - size.height - pad,
+                    size.width + pad * 2,
+                    size.height + baseline + pad * 2);
+}
+
+}  // namespace
+
 Widget::Widget(const json& config) : config_(config) {
     try {
         if (config.contains("font_size")) font_size_ = config["font_size"].get<int>();
@@ -26,6 +64,54 @@ Widget::Widget(const json& config) : config_(config) {
     } catch (const std::exception& e) {
         std::cerr << "Widget config error: " << e.what() << " — using defaults\n";
     }
+}
+
+bool Widget::needs_redraw() const {
+    return !drawn_once_ || value_ != displayed_value_;
+}
+
+void Widget::mark_drawn() {
+    displayed_value_ = value_;
+    drawn_once_ = true;
+}
+
+cv::Rect Widget::dirty_rect(Layout* layout) const {
+    return dirty_rect_for(layout, value_);
+}
+
+cv::Rect Widget::patch_rect(Layout* layout) const {
+    cv::Rect region = dirty_rect_for(layout, displayed_value_);
+    region |= dirty_rect_for(layout, value_);
+    return region;
+}
+
+cv::Rect Widget::dirty_rect_for(Layout* layout, const std::string& text) const {
+    const int draw_x = layout ? layout->scale_design_x(x_) : x_;
+    const int draw_y = layout ? layout->scale_design_y(y_) : y_;
+
+    if (type_ == WidgetType::Bar) {
+        const int bar_w = layout ? layout->scale_design_size(bar_width_) : bar_width_;
+        const int bar_h = layout ? layout->scale_design_size(bar_height_) : bar_height_;
+        return cv::Rect(draw_x, draw_y, bar_w, bar_h);
+    }
+
+    if (text.empty()) {
+        return cv::Rect(draw_x, draw_y, 1, 1);
+    }
+
+    const int draw_font_size = layout ? layout->scale_font_size(font_size_) : font_size_;
+    const auto lines = split_text_lines(text);
+    const int line_stride = text_line_stride(layout, draw_font_size);
+
+    cv::Rect bounds(draw_x, draw_y, 1, 1);
+    for (size_t i = 0; i < lines.size(); ++i) {
+        int baseline = 0;
+        const cv::Size size = measure_text_line(layout, lines[i], draw_font_size, baseline);
+        const int line_y = draw_y + static_cast<int>(i) * line_stride;
+        bounds |= text_line_rect(draw_x, line_y, size, baseline);
+    }
+
+    return bounds;
 }
 
 void Widget::draw(cv::Mat& image, Layout* layout) {
@@ -39,15 +125,20 @@ void Widget::draw(cv::Mat& image, Layout* layout) {
     } else {
         const int draw_font_size = layout ? layout->scale_font_size(font_size_) : font_size_;
         const double hershey_scale = draw_font_size / 24.0;
+        const auto lines = split_text_lines(value_);
+        const int line_stride = text_line_stride(layout, draw_font_size);
 
         try {
-            if (layout && !layout->get_ft2().empty()) {
-                layout->get_ft2()->putText(image, value_, cv::Point(draw_x, draw_y), draw_font_size,
-                                           font_color_, -1, cv::LINE_AA, true);
-            } else {
-                cv::putText(image, value_, cv::Point(draw_x, draw_y + draw_font_size),
-                            cv::FONT_HERSHEY_SIMPLEX, hershey_scale,
-                            font_color_, 1, cv::LINE_AA);
+            for (size_t i = 0; i < lines.size(); ++i) {
+                const int line_y = draw_y + static_cast<int>(i) * line_stride;
+                if (layout && !layout->get_ft2().empty()) {
+                    layout->get_ft2()->putText(image, lines[i], cv::Point(draw_x, line_y), draw_font_size,
+                                               font_color_, -1, cv::LINE_AA, true);
+                } else {
+                    cv::putText(image, lines[i], cv::Point(draw_x, line_y + draw_font_size),
+                                cv::FONT_HERSHEY_SIMPLEX, hershey_scale,
+                                font_color_, 1, cv::LINE_AA);
+                }
             }
         } catch (const std::exception& e) {
             std::cerr << "Widget draw error (using fallback): " << e.what() << "\n";
@@ -156,7 +247,9 @@ void LoadAverageWidget::tick() {
 
 // CpuUtilizationWidget
 CpuUtilizationWidget::CpuUtilizationWidget(const json& config)
-    : Widget(config), last_tick_(std::chrono::steady_clock::now() - interval_) {}
+    : Widget(config),
+      show_percent_(config.value("show_percent", false)),
+      last_tick_(std::chrono::steady_clock::now() - interval_) {}
 
 CpuUtilizationWidget::CpuTimes CpuUtilizationWidget::read_cpu_times() {
     CpuTimes t;
@@ -186,7 +279,7 @@ void CpuUtilizationWidget::tick() {
         if (!initialized_) {
             prev_ = curr;
             initialized_ = true;
-            value_ = "0";
+            value_ = show_percent_ ? "CPU 0%" : "0";
             last_tick_ = now;
             return;
         }
@@ -194,7 +287,8 @@ void CpuUtilizationWidget::tick() {
         auto total_d = curr.total() - prev_.total();
         auto idle_d = curr.idle_time() - prev_.idle_time();
         double util = total_d ? 100.0 * (total_d - idle_d) / total_d : 0.0;
-        value_ = std::to_string(static_cast<int>(util));
+        const auto pct = std::to_string(static_cast<int>(util));
+        value_ = show_percent_ ? "CPU " + pct + "%" : pct;
 
         prev_ = curr;
     } catch (const std::exception& e) {
@@ -207,7 +301,9 @@ void CpuUtilizationWidget::tick() {
 
 // RamUtilizationBarWidget
 RamUtilizationBarWidget::RamUtilizationBarWidget(const json& config)
-    : Widget(config), last_tick_(std::chrono::steady_clock::now() - interval_) {}
+    : Widget(config),
+      show_percent_(config.value("show_percent", false)),
+      last_tick_(std::chrono::steady_clock::now() - interval_) {}
 
 void RamUtilizationBarWidget::tick() {
     auto now = std::chrono::steady_clock::now();
@@ -223,7 +319,8 @@ void RamUtilizationBarWidget::tick() {
         unsigned long long available = free + buffers;
 
         double used_percent = total ? 100.0 * (total - available) / total : 0.0;
-        value_ = std::to_string(static_cast<int>(used_percent));
+        const auto pct = std::to_string(static_cast<int>(used_percent));
+        value_ = show_percent_ ? "RAM " + pct + "%" : pct;
     } catch (const std::exception& e) {
         std::cerr << "RAM tick error: " << e.what() << "\n";
         value_ = "RAM ERR";
@@ -263,8 +360,11 @@ NetworkSpeedWidget::NetStats NetworkSpeedWidget::read_net_stats() {
 
 void NetworkSpeedWidget::tick() {
     auto now = std::chrono::steady_clock::now();
-    double diff_sec = std::chrono::duration<double>(now - last_tick_).count();
-    if (diff_sec < 1.0) return;
+    const double diff_sec = std::chrono::duration<double>(now - last_tick_).count();
+    if (!value_.empty() &&
+        std::chrono::duration_cast<std::chrono::seconds>(now - last_tick_) < interval_) {
+        return;
+    }
 
     try {
         auto curr = read_net_stats();
@@ -414,7 +514,9 @@ void LineWidget::draw(cv::Mat& image, Layout* layout) {
 // ============================================================================
 
 AllTempSensorsWidget::AllTempSensorsWidget(const json& config)
-    : Widget(config), last_tick_(std::chrono::steady_clock::now() - interval_) {}
+    : Widget(config),
+      display_mode_(config.value("display_mode", "inline")),
+      last_tick_(std::chrono::steady_clock::now() - interval_) {}
 
 std::string AllTempSensorsWidget::read_file_trimmed(const std::string& path) {
     std::ifstream file(path);
@@ -528,9 +630,19 @@ std::string AllTempSensorsWidget::format_summary(double min_c, double max_c) {
     return oss.str();
 }
 
+std::string AllTempSensorsWidget::format_fraction(double min_c, double max_c) {
+    std::ostringstream oss;
+    oss << TempUnits::round_display(max_c) << "\n"
+        << TempUnits::round_display(min_c);
+    return oss.str();
+}
+
 void AllTempSensorsWidget::tick() {
     auto now = std::chrono::steady_clock::now();
-    if (std::chrono::duration_cast<std::chrono::seconds>(now - last_tick_) < interval_) return;
+    if (!value_.empty() &&
+        std::chrono::duration_cast<std::chrono::seconds>(now - last_tick_) < interval_) {
+        return;
+    }
 
     try {
         if (!discovered_) discover_sensors();
@@ -550,6 +662,8 @@ void AllTempSensorsWidget::tick() {
 
             if (std::isnan(min_c) || std::isnan(max_c)) {
                 value_ = "N/A";
+            } else if (display_mode_ == "fraction") {
+                value_ = format_fraction(min_c, max_c);
             } else {
                 value_ = format_summary(min_c, max_c);
             }
