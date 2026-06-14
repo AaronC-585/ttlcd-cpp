@@ -1,5 +1,5 @@
 Name:           ttlcd
-Version:        1.0.2
+Version:        1.0.18
 Release:        1%{?dist}
 Summary:        TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels
 License:        MIT

@@ -1,5 +1,5 @@
 Package: ttlcd
-Version: 1.0.2
+Version: 1.0.18
 Section: utils
 Priority: optional
 Architecture: amd64

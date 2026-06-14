@@ -1,6 +1,6 @@
 # Maintainer: Your Name <you@example.com>
 pkgname=ttlcd
-pkgver=1.0.2
+pkgver=1.0.18
 pkgrel=1
 pkgdesc="TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels"
 arch=('x86_64')
