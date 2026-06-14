@@ -4,6 +4,8 @@
 #include <opencv2/opencv.hpp>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <limits>
+#include <chrono>
 
 using json = nlohmann::json;
 
@@ -33,7 +35,7 @@ public:
     Widget(const json& config);
     virtual ~Widget() = default;
     virtual void tick() = 0;
-    void draw(cv::Mat& image, Layout* layout = nullptr);
+    virtual void draw(cv::Mat& image, Layout* layout = nullptr);
 
     void set_position(int x, int y) { x_ = x; y_ = y; }
     void set_font_size(int s) { font_size_ = s; }
@@ -357,4 +359,32 @@ private:
 public:
     GpuMemoryWidget(const json& c);
     void tick() override;
+};
+
+// All temperature sensors with session min/max tracking
+class AllTempSensorsWidget : public Widget {
+private:
+    struct TempSensor {
+        std::string label;
+        std::string path;
+        double current = std::numeric_limits<double>::quiet_NaN();
+        double min_c = std::numeric_limits<double>::quiet_NaN();
+        double max_c = std::numeric_limits<double>::quiet_NaN();
+    };
+
+    std::vector<TempSensor> sensors_;
+    bool discovered_ = false;
+    std::chrono::steady_clock::time_point last_tick_;
+    std::chrono::seconds interval_{2};
+
+    static double read_temp_celsius(const std::string& path);
+    static std::string read_file_trimmed(const std::string& path);
+    void discover_sensors();
+    void update_readings();
+    static std::string format_summary(double min_c, double max_c);
+
+public:
+    AllTempSensorsWidget(const json& c);
+    void tick() override;
+    void draw(cv::Mat& image, Layout* layout = nullptr) override;
 };

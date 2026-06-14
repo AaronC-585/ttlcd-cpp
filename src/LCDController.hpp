@@ -4,11 +4,18 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <mutex>
+#include <thread>
+#include <atomic>
 #include <libusb-1.0/libusb.h>
 #include <nlohmann/json.hpp>
 #include "Layout.hpp"
 
 using json = nlohmann::json;
+
+// Default Thermaltake LCD USB ID (264a:233d)
+inline constexpr int DEFAULT_VENDOR_ID  = 0x264a;
+inline constexpr int DEFAULT_PRODUCT_ID = 0x233d;
 
 class LCDController {
 private:
@@ -20,30 +27,60 @@ private:
 
     std::unique_ptr<Layout> layout_;
 
-    uint8_t ep_write_ = 0x01;
-    uint8_t ep_main_  = 0x03;
+    // Interface 0: 0x01 OUT (440), 0x82 IN (440). Interface 1: 0x03 OUT (1024), 0x84 IN (16).
+    uint8_t ep_write_   = 0x01;
+    uint8_t ep_read_    = 0x82;
+    uint8_t ep_main_    = 0x03;
+    uint8_t ep_trigger_ = 0x84;
 
-    // Configurable timeouts (milliseconds)
     int usb_timeout_ms_ = 30000;
-    int packet_delay_ms_ = 1000;
-    int update_interval_sec_ = 1;
-    
-    // Ping-pong system
-    bool enable_ping_ = true;
-    int ping_interval_sec_ = 30;
-    std::chrono::steady_clock::time_point last_ping_;
+    int packet_delay_ms_ = 0;
+    int ping_packet_delay_ms_ = 0;
+    int loop_interval_ms_ = 1000;
+    int update_interval_sec_ = 10;
 
-    void initialize_device();
+    bool enable_ping_ = true;
+    int ping_interval_sec_ = 3;
+    bool first_upload_pending_ = true;
+    std::atomic<bool> uploading_{false};
+
+    std::string save_jpeg_path_;
+
+    std::mutex usb_mutex_;
+    std::thread keepalive_thread_;
+    std::atomic<bool> running_{false};
+
+    std::chrono::steady_clock::time_point last_ping_;
+    std::chrono::steady_clock::time_point last_display_update_;
+
+    void read_string_descriptors();
+    void start_keepalive_thread();
+    void stop_keepalive_thread();
+    void keepalive_loop();
     std::string libusb_error_string(int error_code);
-    void send_packet(const uint8_t* data, size_t length, uint8_t endpoint);
-    void send_image(const std::string& image_path);
-    void send_ping();
-    bool should_send_ping();
+    void send_packet(const uint8_t* data, size_t length, uint8_t endpoint, int post_delay_ms);
+    void recv_packet(uint8_t endpoint, size_t min_bytes, int timeout_ms, size_t buffer_size = 440);
+    bool try_recv_packet(uint8_t endpoint, size_t min_bytes, int timeout_ms, size_t buffer_size = 440);
+    void drain_in_endpoint(uint8_t endpoint);
+    void clear_in_halt(uint8_t endpoint);
+    void send_padded_command(uint8_t endpoint, const uint8_t* cmd, size_t cmd_len, int padding, int post_delay_ms);
+    void prepare_before_upload();
+    void prepare_before_upload_unlocked();
+    void confirm_after_upload();
+    void confirm_after_upload_unlocked();
+    void send_image(const std::vector<uint8_t>& jpeg_data);
+    void initialize_device();
+    void send_keepalive_unlocked();
+    void update_display();
+    bool should_send_ping() const;
+    bool should_update_display() const;
 
 public:
     explicit LCDController(const std::string& config_path);
     ~LCDController();
 
-    void update_and_send();
+    void tick();
+    int get_loop_interval_ms() const { return loop_interval_ms_; }
     int get_update_interval() const { return update_interval_sec_; }
+    int get_ping_interval() const { return ping_interval_sec_; }
 };

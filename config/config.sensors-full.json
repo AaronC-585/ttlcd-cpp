@@ -1,6 +1,7 @@
 {
-  "idVendor": 9256,
-  "idProduct": 13581,
+  "_comment_usb": "Default USB ID is 264a:233d — omit idVendor/idProduct to use defaults",
+  "idVendor": 9802,
+  "idProduct": 9021,
   "use": "NODE",
   
   "background": "/path/to/background.jpg",

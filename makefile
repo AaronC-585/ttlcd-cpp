@@ -45,45 +45,64 @@ CMAKE     := CMakeLists.txt
 WORKFLOW  := $(GH_WORKFLOW)/release.yml
 
 # =============================================================================
+# Embed font binary into C++ header
+# =============================================================================
+EMBED_FONT_SRC := fonts/comic.ttf
+EMBED_FONT_HDR := src/EmbeddedFont.hpp
+
+embed-font: $(EMBED_FONT_HDR)
+
+$(EMBED_FONT_HDR): $(EMBED_FONT_SRC)
+	@echo "Generating $@ from $<"
+	@python3 -c 'from pathlib import Path; src=Path("$(EMBED_FONT_SRC)"); data=src.read_bytes(); out=Path("$(EMBED_FONT_HDR)"); lines=["#pragma once","","#include <cstddef>","#include <cstdint>","","namespace EmbeddedFont {",f"inline constexpr std::size_t comic_ttf_size = {len(data)};","inline const unsigned char comic_ttf[] = {"]; [lines.append("    "+", ".join(f"0x{b:02x}" for b in data[i:i+16])+",") for i in range(0,len(data),16)]; lines.extend(["};","","}  // namespace EmbeddedFont",""]); out.write_text("\\n".join(lines))'
+
+# =============================================================================
 # Default target: build everything
 # =============================================================================
-all: version $(TARGET) packaging
+all: $(TARGET) packaging
 
 packaging: $(CONTROL) $(SPEC) $(PKGBUILD) $(CMAKE) $(WORKFLOW)
 	@echo "All packaging files generated."
 
+OTHER_OBJECTS := $(filter-out main.o,$(OBJECTS))
+
 # =============================================================================
-# Version header
+# Version header (auto-increments patch on each successful link)
 # =============================================================================
-version:
-	@echo "Generating $(VERSION_FILE) (v$(VERSION))"
-	@echo "#pragma once" > $(VERSION_FILE)
-	@echo "" >> $(VERSION_FILE)
-	@echo "#include <string>" >> $(VERSION_FILE)
-	@echo "" >> $(VERSION_FILE)
-	@echo "namespace Version {" >> $(VERSION_FILE)
-	@echo "    constexpr const char* BUILD_DATE = \"$(shell date '+%B %d, %Y')\";" >> $(VERSION_FILE)
-	@echo "    constexpr int MAJOR = $(VERSION_MAJOR);" >> $(VERSION_FILE)
-	@echo "    constexpr int MINOR = $(VERSION_MINOR);" >> $(VERSION_FILE)
-	@echo "    constexpr int PATCH = $(NEXT_PATCH);" >> $(VERSION_FILE)
-	@echo "" >> $(VERSION_FILE)
-	@echo "    inline std::string get_version() {" >> $(VERSION_FILE)
-	@echo "        return std::to_string(MAJOR) + \".\" + std::to_string(MINOR) + \".\" + std::to_string(PATCH);" >> $(VERSION_FILE)
-	@echo "    }" >> $(VERSION_FILE)
-	@echo "" >> $(VERSION_FILE)
-	@echo "    inline std::string get_full_info() {" >> $(VERSION_FILE)
-	@echo "        return \"ttlcd-cpp v\" + get_version() + \" (built \" + BUILD_DATE + \")\";" >> $(VERSION_FILE)
-	@echo "    }" >> $(VERSION_FILE)
-	@echo "}" >> $(VERSION_FILE)
-	@echo $(NEXT_PATCH) > $(VERSION_PATCH_FILE)
+increment-version:
+	@PATCH=$$(($$(cat $(VERSION_PATCH_FILE) 2>/dev/null || echo 0) + 1)); \
+	echo "Generating $(VERSION_FILE) (v$(VERSION_MAJOR).$(VERSION_MINOR).$$PATCH)"; \
+	echo $$PATCH > $(VERSION_PATCH_FILE); \
+	echo '#pragma once' > $(VERSION_FILE); \
+	echo '' >> $(VERSION_FILE); \
+	echo '#include <string>' >> $(VERSION_FILE); \
+	echo '' >> $(VERSION_FILE); \
+	echo 'namespace Version {' >> $(VERSION_FILE); \
+	echo '    constexpr const char* BUILD_DATE = "$(shell date '+%B %d, %Y')";' >> $(VERSION_FILE); \
+	echo '    constexpr int MAJOR = $(VERSION_MAJOR);' >> $(VERSION_FILE); \
+	echo '    constexpr int MINOR = $(VERSION_MINOR);' >> $(VERSION_FILE); \
+	echo "    constexpr int PATCH = $$PATCH;" >> $(VERSION_FILE); \
+	echo '' >> $(VERSION_FILE); \
+	echo '    inline std::string get_version() {' >> $(VERSION_FILE); \
+	echo '        return std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(PATCH);' >> $(VERSION_FILE); \
+	echo '    }' >> $(VERSION_FILE); \
+	echo '' >> $(VERSION_FILE); \
+	echo '    inline std::string get_full_info() {' >> $(VERSION_FILE); \
+	echo '        return "ttlcd-cpp v" + get_version() + " (built " + BUILD_DATE + ")";' >> $(VERSION_FILE); \
+	echo '    }' >> $(VERSION_FILE); \
+	echo '}' >> $(VERSION_FILE)
+
+version: increment-version
 
 # =============================================================================
 # Build
 # =============================================================================
-$(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LDLIBS) -o $@
+$(TARGET): $(OTHER_OBJECTS)
+	@$(MAKE) --no-print-directory increment-version
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c main.cpp -o main.o
+	$(CXX) $(CXXFLAGS) main.o $(OTHER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 
-%.o: %.cpp $(VERSION_FILE)
+%.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # =============================================================================
@@ -319,4 +338,4 @@ clean-packaging:
 
 clean-all: clean clean-packaging
 
-.PHONY: all clean clean-packaging clean-all version packaging
+.PHONY: all clean clean-packaging clean-all version increment-version packaging embed-font

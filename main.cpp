@@ -53,14 +53,12 @@ int main(int argc, char** argv) {
 
         std::cout << "TTLCD running... Press Ctrl+C to stop.\n";
         std::cout << Version::get_full_info() << std::endl;
-
-        // Use the configurable update interval from config
-        int update_interval = lcd.get_update_interval();
-        std::cout << "Display will update every " << update_interval << " second(s)\n";
+        std::cout << "Keep-alive ping/pong every " << lcd.get_ping_interval()
+                  << "s, display refresh every " << lcd.get_update_interval() << "s\n";
 
         while (true) {
-            lcd.update_and_send();  // Renders in memory + sends via USB
-            std::this_thread::sleep_for(std::chrono::seconds(update_interval));
+            lcd.tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(lcd.get_loop_interval_ms()));
         }
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

@@ -1,24 +1,42 @@
 {
-  "idVendor": 9802,
-  "idProduct": 9021,
+  "_comment_usb": "Default USB ID is 264a:233d — omit idVendor/idProduct to use defaults",
   "jpeg_quality": 85,
-  "jpeg_optimize": true,
+  "jpeg_dpi": 150,
+  "jpeg_optimize": false,
   "use": "NODE",
   "orientation": "TOP",
   "background": "./backgrounds/blk.jpg",
 
-  "font_size": 26,
-  "font_color": [255, 255, 255],
+  "font_file": "embedded",
+  "font_size": 20,
+  "font_scale_percent": 100,
+  "font_color": [0, 255, 255],
+  "temp_unit": "F",
 
-  "font_file": "./fonts/ComicRelief-Bold.ttf",
+  "loop_interval_ms": 1000,
+  "ping_interval_sec": 8,
+  "ping_packet_delay_ms": 0,
+  "update_interval_sec": 10,
+  "packet_delay_ms": 0,
+  "enable_ping": true,
+  "save_jpeg": true,
 
   "widgets": [
     {
-      "type": "cpu_percent",
+      "type": "text",
       "enable": true,
-      "x": 20,
-      "y": 40,
-      "font_size": 56,
+      "x": 6,
+      "y": 82,
+      "text": "min | max",
+      "font_size": 20,
+      "font_color": [0, 255, 255]
+    },
+    {
+      "type": "all_temps",
+      "enable": true,
+      "x": 4,
+      "y": 54,
+      "font_size": 20,
       "font_color": [0, 255, 255]
     }
   ]

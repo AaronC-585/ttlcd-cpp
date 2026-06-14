@@ -1,21 +1,27 @@
 {
-  "idVendor": 9256,
-  "idProduct": 13581,
+  "_comment_usb": "Default USB ID is 264a:233d — omit idVendor/idProduct to use defaults",
+  "idVendor": 9802,
+  "idProduct": 9021,
   "use": "NODE",
   
   "background": "/path/to/background.jpg",
   "orientation": "TOP",
-  "font_file": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+  "font_file": "embedded",
   "font_size": 14,
+  "font_scale_percent": 100,
+
+  "_comment_font_scale": "font_scale_percent scales all widget fonts by (background_width/480) * (LCD_max_DPI/96) * (percent/100). LCD max DPI is ~127 for the 3.9 inch 480x128 panel. Use 100 for full DPI boost, lower to reduce (e.g. 75), or 0 to disable scaling.",
   
   "_comment_timeouts": "Timeout and performance configuration",
   "usb_timeout_ms": 30000,
+  "loop_interval_ms": 1000,
+  "ping_interval_sec": 3,
+  "ping_packet_delay_ms": 0,
+  "update_interval_sec": 10,
   "packet_delay_ms": 1000,
-  "update_interval_sec": 1,
-  
-  "_comment_ping": "Keep-alive ping-pong configuration to prevent USB timeouts",
+
+  "_comment_ping": "Short ping/pong keep-alive (0x85/0x87) keeps USB connected; full JPEG uploads use update_interval_sec",
   "enable_ping": true,
-  "ping_interval_sec": 30,
   
   "_comment_widgets": "Widget configuration",
   "widgets": [

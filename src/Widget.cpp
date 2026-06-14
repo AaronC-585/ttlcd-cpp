@@ -2,6 +2,7 @@
 
 #include "Widget.hpp"
 #include "Layout.hpp"
+#include "TempUnits.hpp"
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -10,6 +11,10 @@
 #include <sys/statvfs.h>
 #include <filesystem>
 #include <iostream>
+#include <limits>
+#include <cmath>
+#include <set>
+#include <algorithm>
 
 Widget::Widget(const json& config) : config_(config) {
     try {
@@ -26,29 +31,30 @@ Widget::Widget(const json& config) : config_(config) {
 void Widget::draw(cv::Mat& image, Layout* layout) {
     tick();
 
-    if (layout && !layout->get_ft2().empty()) {
-        layout->get_ft2()->putText(image, value_, cv::Point(x_, y_), font_size_,
-                                   font_color_, -1, cv::LINE_AA, true);
-    } else {
-        cv::putText(image, value_, cv::Point(x_, y_ + font_size_),
-                    cv::FONT_HERSHEY_SIMPLEX, font_size_ / 24.0,
-                    font_color_, 1, cv::LINE_AA);
-    }
+    const int draw_x = layout ? layout->scale_design_x(x_) : x_;
+    const int draw_y = layout ? layout->scale_design_y(y_) : y_;
 
-    try {
-        if (layout && !layout->ft2_.empty()) {
-            layout->ft2_->putText(image, value_, cv::Point(x_, y_), font_size_,
-                                  font_color_, -1, cv::LINE_AA, true);
-        } else {
-            cv::putText(image, value_, cv::Point(x_, y_ + font_size_),
-                        cv::FONT_HERSHEY_SIMPLEX, font_size_ / 24.0,
-                        font_color_, 1, cv::LINE_AA);
+    if (value_.empty()) {
+        // LineWidget and similar draw without text
+    } else {
+        const int draw_font_size = layout ? layout->scale_font_size(font_size_) : font_size_;
+        const double hershey_scale = draw_font_size / 24.0;
+
+        try {
+            if (layout && !layout->get_ft2().empty()) {
+                layout->get_ft2()->putText(image, value_, cv::Point(draw_x, draw_y), draw_font_size,
+                                           font_color_, -1, cv::LINE_AA, true);
+            } else {
+                cv::putText(image, value_, cv::Point(draw_x, draw_y + draw_font_size),
+                            cv::FONT_HERSHEY_SIMPLEX, hershey_scale,
+                            font_color_, 1, cv::LINE_AA);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Widget draw error (using fallback): " << e.what() << "\n";
+            cv::putText(image, value_, cv::Point(draw_x, draw_y + draw_font_size),
+                        cv::FONT_HERSHEY_SIMPLEX, hershey_scale,
+                        cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
         }
-    } catch (const std::exception& e) {
-        std::cerr << "Widget draw error (using fallback): " << e.what() << "\n";
-        cv::putText(image, value_, cv::Point(x_, y_ + font_size_),
-                    cv::FONT_HERSHEY_SIMPLEX, font_size_ / 24.0,
-                    cv::Scalar(0, 0, 255), 1, cv::LINE_AA);  // Red on error
     }
 
     // Bar rendering with error handling
@@ -62,12 +68,15 @@ void Widget::draw(cv::Mat& image, Layout* layout) {
         }
         percent = std::min(100.0, std::max(0.0, percent));
 
-        int filled = static_cast<int>((percent / 100.0) *
-            (bar_ori_ == BarOrientation::Horizontal ? bar_width_ : bar_height_));
+        const int bar_w = layout ? layout->scale_design_size(bar_width_) : bar_width_;
+        const int bar_h = layout ? layout->scale_design_size(bar_height_) : bar_height_;
 
-        cv::Rect bg_rect(x_, y_,
-                         bar_ori_ == BarOrientation::Horizontal ? bar_width_ : bar_height_,
-                         bar_ori_ == BarOrientation::Horizontal ? bar_height_ : bar_width_);
+        int filled = static_cast<int>((percent / 100.0) *
+            (bar_ori_ == BarOrientation::Horizontal ? bar_w : bar_h));
+
+        cv::Rect bg_rect(draw_x, draw_y,
+                         bar_ori_ == BarOrientation::Horizontal ? bar_w : bar_h,
+                         bar_ori_ == BarOrientation::Horizontal ? bar_h : bar_w);
 
         try {
             cv::rectangle(image, bg_rect, cv::Scalar(30, 30, 30), cv::FILLED);
@@ -76,10 +85,10 @@ void Widget::draw(cv::Mat& image, Layout* layout) {
             cv::Rect fill_rect = bg_rect;
             if (bar_ori_ == BarOrientation::Horizontal) {
                 if (bar_direction_ == "right") fill_rect.width = filled;
-                else if (bar_direction_ == "left") { fill_rect.x += bar_width_ - filled; fill_rect.width = filled; }
+                else if (bar_direction_ == "left") { fill_rect.x += bar_w - filled; fill_rect.width = filled; }
             } else {
                 if (bar_direction_ == "down") fill_rect.height = filled;
-                else if (bar_direction_ == "up") { fill_rect.y += bar_height_ - filled; fill_rect.height = filled; }
+                else if (bar_direction_ == "up") { fill_rect.y += bar_h - filled; fill_rect.height = filled; }
             }
             cv::rectangle(image, fill_rect, bar_fill_, cv::FILLED);
         } catch (const std::exception& e) {
@@ -387,14 +396,174 @@ void LineWidget::tick() {
 }
 
 void LineWidget::draw(cv::Mat& image, Layout* layout) {
-    (void)layout;  // Unused parameter
-    
+    const int x1 = layout ? layout->scale_design_x(x_) : x_;
+    const int y1 = layout ? layout->scale_design_y(y_) : y_;
+    const int x2 = layout ? layout->scale_design_x(x2_) : x2_;
+    const int y2 = layout ? layout->scale_design_y(y2_) : y2_;
+
     try {
-        cv::line(image, cv::Point(x_, y_), cv::Point(x2_, y2_), 
+        cv::line(image, cv::Point(x1, y1), cv::Point(x2, y2),
                 line_color_, thickness_, cv::LINE_AA);
     } catch (const std::exception& e) {
         std::cerr << "LineWidget draw error: " << e.what() << "\n";
     }
+}
+
+// ============================================================================
+// ALL TEMPERATURE SENSORS
+// ============================================================================
+
+AllTempSensorsWidget::AllTempSensorsWidget(const json& config)
+    : Widget(config), last_tick_(std::chrono::steady_clock::now() - interval_) {}
+
+std::string AllTempSensorsWidget::read_file_trimmed(const std::string& path) {
+    std::ifstream file(path);
+    if (!file) return {};
+    std::string value;
+    file >> value;
+    return value;
+}
+
+double AllTempSensorsWidget::read_temp_celsius(const std::string& path) {
+    try {
+        const std::string raw = read_file_trimmed(path);
+        if (raw.empty()) return std::numeric_limits<double>::quiet_NaN();
+
+        double temp = std::stod(raw);
+        if (temp > 200.0) temp /= 1000.0;
+        if (temp < -100.0 || temp > 200.0) return std::numeric_limits<double>::quiet_NaN();
+        return temp;
+    } catch (...) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+}
+
+void AllTempSensorsWidget::discover_sensors() {
+    sensors_.clear();
+    std::set<std::string> seen_paths;
+
+    auto add_sensor = [&](const std::string& path, const std::string& label) {
+        if (label.empty() || !std::filesystem::exists(path)) return;
+
+        std::error_code ec;
+        const std::string canonical = std::filesystem::weakly_canonical(path, ec).string();
+        const std::string key = ec ? path : canonical;
+        if (!seen_paths.insert(key).second) return;
+
+        const double temp = read_temp_celsius(path);
+        if (std::isnan(temp)) return;
+
+        TempSensor sensor;
+        sensor.label = label;
+        sensor.path = path;
+        sensor.current = temp;
+        sensor.min_c = temp;
+        sensor.max_c = temp;
+        sensors_.push_back(std::move(sensor));
+    };
+
+    try {
+        const std::filesystem::path thermal_root = "/sys/class/thermal";
+        if (std::filesystem::exists(thermal_root)) {
+            for (const auto& entry : std::filesystem::directory_iterator(thermal_root)) {
+                if (!entry.is_directory()) continue;
+                const auto zone_path = entry.path();
+                if (zone_path.filename().string().rfind("thermal_zone", 0) != 0) continue;
+
+                const std::string type = read_file_trimmed((zone_path / "type").string());
+                const std::string temp_path = (zone_path / "temp").string();
+                const std::string label = type.empty() ? zone_path.filename().string() : type;
+                add_sensor(temp_path, label);
+            }
+        }
+
+        const std::filesystem::path hwmon_root = "/sys/class/hwmon";
+        if (std::filesystem::exists(hwmon_root)) {
+            for (const auto& hwmon : std::filesystem::directory_iterator(hwmon_root)) {
+                if (!hwmon.is_directory()) continue;
+
+                const std::string chip = read_file_trimmed((hwmon.path() / "name").string());
+                for (const auto& entry : std::filesystem::directory_iterator(hwmon.path())) {
+                    const std::string filename = entry.path().filename().string();
+                    if (filename.rfind("temp", 0) != 0 || filename.size() <= 6) continue;
+                    if (filename.compare(filename.size() - 6, 6, "_input") != 0) continue;
+
+                    const std::string label_path = entry.path().string();
+                    const std::string label_file = label_path.substr(0, label_path.size() - 5) + "label";
+                    std::string label = read_file_trimmed(label_file);
+                    if (label.empty()) label = filename.substr(0, filename.size() - 6);
+                    if (!chip.empty()) label = chip + " " + label;
+
+                    add_sensor(label_path, label);
+                }
+            }
+        }
+
+        std::sort(sensors_.begin(), sensors_.end(),
+                  [](const TempSensor& a, const TempSensor& b) { return a.label < b.label; });
+    } catch (const std::exception& e) {
+        std::cerr << "AllTempSensors discovery error: " << e.what() << "\n";
+    }
+
+    discovered_ = true;
+}
+
+void AllTempSensorsWidget::update_readings() {
+    for (auto& sensor : sensors_) {
+        const double temp = read_temp_celsius(sensor.path);
+        if (std::isnan(temp)) continue;
+
+        sensor.current = temp;
+        if (std::isnan(sensor.min_c) || temp < sensor.min_c) sensor.min_c = temp;
+        if (std::isnan(sensor.max_c) || temp > sensor.max_c) sensor.max_c = temp;
+    }
+}
+
+std::string AllTempSensorsWidget::format_summary(double min_c, double max_c) {
+    std::ostringstream oss;
+    oss << std::setw(3) << std::right << TempUnits::round_display(min_c)
+        << " | "
+        << std::setw(3) << std::right << TempUnits::round_display(max_c)
+        << TempUnits::degree_suffix();
+    return oss.str();
+}
+
+void AllTempSensorsWidget::tick() {
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::seconds>(now - last_tick_) < interval_) return;
+
+    try {
+        if (!discovered_) discover_sensors();
+        update_readings();
+
+        if (sensors_.empty()) {
+            value_ = "No temp sensors";
+        } else {
+            double min_c = std::numeric_limits<double>::quiet_NaN();
+            double max_c = std::numeric_limits<double>::quiet_NaN();
+
+            for (const auto& sensor : sensors_) {
+                if (std::isnan(sensor.current)) continue;
+                if (std::isnan(min_c) || sensor.current < min_c) min_c = sensor.current;
+                if (std::isnan(max_c) || sensor.current > max_c) max_c = sensor.current;
+            }
+
+            if (std::isnan(min_c) || std::isnan(max_c)) {
+                value_ = "N/A";
+            } else {
+                value_ = format_summary(min_c, max_c);
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "AllTempSensors tick error: " << e.what() << "\n";
+        value_ = "TEMP ERR";
+    }
+
+    last_tick_ = now;
+}
+
+void AllTempSensorsWidget::draw(cv::Mat& image, Layout* layout) {
+    Widget::draw(image, layout);
 }
 
 // ============================================================================
@@ -440,7 +609,8 @@ void CpuTempWidget::tick() {
         double temp = read_temperature();
         if (temp > -900.0) {
             std::ostringstream oss;
-            oss << std::fixed << std::setprecision(1) << temp << "°C";
+            oss << std::fixed << std::setprecision(1)
+                << TempUnits::celsius_to_display(temp) << TempUnits::degree_suffix();
             value_ = oss.str();
         } else {
             value_ = "N/A";
@@ -505,7 +675,8 @@ void GpuTempWidget::tick() {
         
         if (temp > -900.0) {
             std::ostringstream oss;
-            oss << std::fixed << std::setprecision(1) << temp << "°C";
+            oss << std::fixed << std::setprecision(1)
+                << TempUnits::celsius_to_display(temp) << TempUnits::degree_suffix();
             value_ = oss.str();
         } else {
             value_ = "N/A";
