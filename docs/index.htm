@@ -1,4 +1,4 @@
-x<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -494,7 +494,7 @@ x<!DOCTYPE html>
       <span class="badge"><span class="badge-label">platform</span><span class="badge-value gray">Linux</span></span>
       <span class="badge"><span class="badge-label">license</span><span class="badge-value green">MIT</span></span>
       <span class="badge"><span class="badge-label">build</span><span class="badge-value green">passing</span></span>
-      <span class="badge"><span class="badge-label">version</span><span class="badge-value gray">1.0.1</span></span>
+      <span class="badge"><span class="badge-label">version</span><span class="badge-value gray">1.0.18</span></span>
     </div>
   </div>
 
@@ -516,14 +516,14 @@ x<!DOCTYPE html>
   <section class="fade-in">
     <h2><span class="icon">✦</span> Features</h2>
     <div class="feature-grid">
+      <div class="feature"><span class="dot"></span>System-wide min | max temperature dashboard (<code>all_temps</code> widget)</div>
+      <div class="feature"><span class="dot"></span>Embedded Comic font — no external TTF required (<code>font_file: "embedded"</code>)</div>
+      <div class="feature"><span class="dot"></span>Dynamic JPEG pipeline with configurable DPI (<code>jpeg_dpi</code>)</div>
+      <div class="feature"><span class="dot"></span>USB keep-alive thread — stable uploads without LCD resets</div>
+      <div class="feature"><span class="dot"></span>Default USB ID <code>264a:233d</code> (Thermaltake Tower 200)</div>
       <div class="feature"><span class="dot"></span>Live CPU &amp; RAM usage bars with configurable dimensions</div>
-      <div class="feature"><span class="dot"></span>Real-time network upload/download speed display</div>
-      <div class="feature"><span class="dot"></span>Custom TTF fonts via OpenCV FreeType (Digital-7, Orbitron…)</div>
-      <div class="feature"><span class="dot"></span>Dynamic text widget with powerful format placeholders</div>
-      <div class="feature"><span class="dot"></span>Full JSON configuration — layout, colors, widgets</div>
-      <div class="feature"><span class="dot"></span>Complete USB init sequence &amp; robust libusb error reporting</div>
-      <div class="feature"><span class="dot"></span>Graceful fallback — shows ERR if a data source fails</div>
-      <div class="feature"><span class="dot"></span>Temporary image rendering with automatic cleanup</div>
+      <div class="feature"><span class="dot"></span>Custom TTF fonts via OpenCV FreeType</div>
+      <div class="feature"><span class="dot"></span>Full JSON widget configuration — layout, colors, sensors</div>
     </div>
   </section>
 
@@ -550,8 +550,8 @@ x<!DOCTYPE html>
   <section class="fade-in">
     <h2><span class="icon">⬡</span> Building</h2>
     <div class="code-wrap">
-      <pre><code>make -j$(nproc)           # build the binary
-sudo ./ttlcd config.json  # run (USB requires sudo)</code></pre>
+      <pre><code>make ttlcd              # build binary (auto-bumps patch version)
+./ttlcd config.json     # run (udev rule recommended; see Troubleshooting)</code></pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
     <p style="margin-top:10px; font-size:13.5px; color:var(--text-muted);">
@@ -576,21 +576,21 @@ make clean-all        # both</code></pre>
     </div>
     <div id="tab-deb" class="tab-panel active">
       <div class="code-wrap">
-        <pre><code>wget https://github.com/YOURUSERNAME/ttlcd/releases/latest/download/ttlcd-v1.0.0-amd64.deb
-sudo dpkg -i ttlcd-v1.0.0-amd64.deb</code></pre>
+        <pre><code>wget https://github.com/AaronC-585/ttlcd-cpp/releases/download/v1.0.18/ttlcd-v1.0.18-amd64.deb
+sudo dpkg -i ttlcd-v1.0.18-amd64.deb</code></pre>
         <button class="copy-btn" onclick="copyCode(this)">copy</button>
       </div>
     </div>
     <div id="tab-rpm" class="tab-panel">
       <div class="code-wrap">
-        <pre><code>sudo rpm -i ttlcd-1.0.0-1.x86_64.rpm</code></pre>
+        <pre><code>sudo rpm -i ttlcd-1.0.18-1.x86_64.rpm</code></pre>
         <button class="copy-btn" onclick="copyCode(this)">copy</button>
       </div>
     </div>
     <div id="tab-arch" class="tab-panel">
       <div class="code-wrap">
         <pre><code># Download PKGBUILD.tar.gz from Releases, then:
-tar xzf ttlcd-v1.0.0-PKGBUILD.tar.gz
+tar xzf ttlcd-v1.0.18-PKGBUILD.tar.gz
 makepkg -si</code></pre>
         <button class="copy-btn" onclick="copyCode(this)">copy</button>
       </div>
@@ -602,8 +602,8 @@ makepkg -si</code></pre>
     <h2><span class="icon">⟳</span> Release</h2>
     <p style="color:var(--text-muted); font-size:13.5px; margin-bottom:10px;">Push a version tag to trigger the GitHub Actions workflow — it builds and publishes <code>.deb</code>, <code>.rpm</code>, and <code>PKGBUILD</code> automatically as release assets.</p>
     <div class="code-wrap">
-      <pre><code>git tag v1.0.0
-git push origin v1.0.0</code></pre>
+      <pre><code>git tag v1.0.18
+git push origin v1.0.18</code></pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
   </section>
@@ -620,41 +620,25 @@ git push origin v1.0.0</code></pre>
       <div class="details-body">
         <div class="code-wrap" style="margin:0;">
           <pre><code>{
-  "idVendor":   9802,
-  "idProduct":  9021,
-  "use":        "NODE",
-  "orientation":"TOP",
-  "background": "./bg.jpg",
+  "jpeg_quality": 85,
+  "jpeg_dpi": 150,
+  "use": "NODE",
+  "orientation": "TOP",
+  "background": "./backgrounds/blk.jpg",
 
-  "font_size":  14,
-  "font_color": [255, 255, 255],
-  "font_file":  "fonts/Digital-7.ttf",
+  "font_file": "embedded",
+  "font_size": 20,
+  "font_color": [0, 255, 255],
+  "temp_unit": "F",
 
-  "enable_date":           true,
-  "date_x": 20,            "date_y": 10,   "date_font_size": 20,
+  "ping_interval_sec": 8,
+  "update_interval_sec": 10,
+  "enable_ping": true,
 
-  "enable_time":           true,
-  "time_x": 20,            "time_y": 40,   "time_font_size": 32,
-
-  "enable_cpu_bar":        true,
-  "cpu_bar_x": 20,         "cpu_bar_y": 80,
-  "cpu_bar_width": 440,    "cpu_bar_height": 30,
-
-  "enable_ram_bar":        true,
-  "ram_bar_x": 20,         "ram_bar_y": 120,
-  "ram_bar_width": 440,    "ram_bar_height": 30,
-
-  "enable_network":        true,
-  "network_x": 20,         "network_y": 160,  "network_font_size": 28,
-
-  "enable_loadavg":        true,
-  "loadavg_x": 20,         "loadavg_y": 200,
-
-  "enable_dynamic_text":   true,
-  "dynamic_text_x": 20,    "dynamic_text_y": 230,
-  "dynamic_text_font_size": 24,
-  "dynamic_text_font_color": [0, 255, 255],
-  "format": "CPU: {cpu_percent}% | RAM: {ram_percent}% | ↑{net_up} ↓{net_down} | {time}"
+  "widgets": [
+    { "type": "text", "x": 6, "y": 82, "text": "min | max" },
+    { "type": "all_temps", "x": 4, "y": 54, "font_size": 20 }
+  ]
 }</code></pre>
           <button class="copy-btn" onclick="copyCode(this)">copy</button>
         </div>
@@ -667,14 +651,17 @@ git push origin v1.0.0</code></pre>
         <tr><th>Key</th><th>Type</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td class="td-key">idVendor / idProduct</td><td class="td-type">int</td><td class="td-desc">USB vendor &amp; product IDs for your LCD panel</td></tr>
-        <tr><td class="td-key">orientation</td><td class="td-type">string</td><td class="td-desc"><code>"TOP"</code> or <code>"BOTTOM"</code> — physical mount orientation</td></tr>
+        <tr><td class="td-key">idVendor / idProduct</td><td class="td-type">int</td><td class="td-desc">USB IDs — defaults to <code>264a:233d</code> (Tower 200) if omitted</td></tr>
+        <tr><td class="td-key">jpeg_dpi</td><td class="td-type">int</td><td class="td-desc">Render DPI for dynamic JPEG (default <code>150</code>; design coords at 300 DPI)</td></tr>
+        <tr><td class="td-key">temp_unit</td><td class="td-type">string</td><td class="td-desc"><code>"F"</code> or <code>"C"</code> — override with env <code>TTLCD_TEMP_UNIT</code></td></tr>
+        <tr><td class="td-key">ping_interval_sec</td><td class="td-type">int</td><td class="td-desc">USB keep-alive interval (default 8s)</td></tr>
+        <tr><td class="td-key">update_interval_sec</td><td class="td-type">int</td><td class="td-desc">Dashboard JPEG refresh interval</td></tr>
+        <tr><td class="td-key">orientation</td><td class="td-type">string</td><td class="td-desc"><code>TOP</code>, <code>BOTTOM</code>, <code>LEFT</code>, or <code>RIGHT</code></td></tr>
         <tr><td class="td-key">background</td><td class="td-type">string</td><td class="td-desc">Path to background image (jpg/png)</td></tr>
-        <tr><td class="td-key">font_file</td><td class="td-type">string</td><td class="td-desc">Path to custom TTF; falls back to Hershey if missing</td></tr>
-        <tr><td class="td-key">font_color</td><td class="td-type">[B,G,R]</td><td class="td-desc">Default text color — note OpenCV uses BGR order</td></tr>
-        <tr><td class="td-key">enable_*</td><td class="td-type">bool</td><td class="td-desc">Toggle any widget on or off</td></tr>
-        <tr><td class="td-key">*_x / *_y</td><td class="td-type">int</td><td class="td-desc">Widget position in pixels from top-left</td></tr>
-        <tr><td class="td-key">format</td><td class="td-type">string</td><td class="td-desc">Dynamic text format string using placeholders below</td></tr>
+        <tr><td class="td-key">font_file</td><td class="td-type">string</td><td class="td-desc">TTF path, or <code>"embedded"</code> for built-in Comic font</td></tr>
+        <tr><td class="td-key">font_color</td><td class="td-type">[B,G,R]</td><td class="td-desc">Default text color — OpenCV uses BGR order</td></tr>
+        <tr><td class="td-key">widgets</td><td class="td-type">array</td><td class="td-desc">Widget list — <code>text</code>, <code>all_temps</code>, <code>cpu_bar</code>, <code>line</code>, etc.</td></tr>
+        <tr><td class="td-key">x / y</td><td class="td-type">int</td><td class="td-desc">Widget position in design pixels (300 DPI space)</td></tr>
       </tbody>
     </table>
 
@@ -747,7 +734,7 @@ WantedBy=multi-user.target</code></pre>
       </div>
       <div class="trouble-row">
         <span class="trouble-tag">Permission denied</span>
-        <span class="trouble-desc">Run with <code>sudo</code>, or add a udev rule: <code>SUBSYSTEM=="usb", ATTR{idVendor}=="2653", MODE="0666"</code></span>
+        <span class="trouble-desc">Add udev rule: <code>SUBSYSTEM=="usb", ATTR{idVendor}=="264a", ATTR{idProduct}=="233d", MODE="0666"</code></span>
       </div>
       <div class="trouble-row">
         <span class="trouble-tag">Wrong colors</span>
@@ -764,7 +751,7 @@ WantedBy=multi-user.target</code></pre>
   </section>
 
   <footer class="fade-in">
-    <div class="footer-left"><strong>ttlcd-cpp</strong> &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; Updated Feb 2026</div>
+    <div class="footer-left"><strong>ttlcd-cpp</strong> &nbsp;·&nbsp; v1.0.18 &nbsp;·&nbsp; Updated June 2026</div>
     <div class="footer-right">MIT &nbsp;·&nbsp; Linux only</div>
   </footer>
 
