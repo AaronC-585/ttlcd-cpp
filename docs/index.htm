@@ -534,14 +534,19 @@
     <h2><span class="icon">◈</span> Requirements</h2>
     <h3>Runtime</h3>
     <div class="code-wrap">
-      <pre><code>sudo apt install libusb-1.0-0 libopencv-core4.5 libopencv-imgproc4.5 \
-    libopencv-imgcodecs4.5 libopencv-highgui4.5</code></pre>
+      <pre><code>sudo apt install libusb-1.0-0 libstdc++6 libfreetype6 fontconfig libharfbuzz0b \
+    libjpeg62-turbo libpng16-16 zlib1g \
+    libopencv-core410 libopencv-imgproc410 libopencv-imgcodecs410 libopencv-contrib410</code></pre>
+      <p style="margin-top:8px; font-size:13px; color:var(--text-muted);">
+        On Ubuntu 22.04/24.04 use the <code>4.5d</code> or <code>406</code> OpenCV package suffixes instead of <code>410</code>.
+      </p>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
     <h3>Build</h3>
     <div class="code-wrap">
-      <pre><code>sudo apt install build-essential pkg-config libusb-1.0-0-dev \
-    libopencv-dev libfreetype6-dev</code></pre>
+      <pre><code>sudo apt install build-essential g++ make pkg-config python3 \
+    libusb-1.0-0-dev libopencv-dev libopencv-contrib-dev libfreetype6-dev \
+    libfontconfig-dev libharfbuzz-dev libjpeg-dev libpng-dev zlib1g-dev</code></pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
   </section>

@@ -8,7 +8,8 @@ CXX      := g++
 CXXFLAGS := -std=c++20 -O2 -Wall -Wextra -pedantic
 CXXFLAGS += -Wno-deprecated-enum-enum-conversion
 CPPFLAGS := -Iinclude $(shell pkg-config --cflags libusb-1.0 opencv4)
-LDFLAGS  := $(shell pkg-config --libs libusb-1.0 opencv4)
+# Link only the OpenCV modules we use (avoids pulling GDAL/GDCM/etc. at runtime).
+LDFLAGS  := $(shell pkg-config --libs libusb-1.0) -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_freetype
 LDLIBS   := -lpthread
 
 # Project structure
@@ -116,8 +117,8 @@ $(CONTROL): | $(PKG_DEB_DIR)
 	@printf 'Priority: optional\n' >> $@
 	@printf 'Architecture: amd64\n' >> $@
 	@printf 'Maintainer: Aaron C\n' >> $@
-	@printf 'Depends: libusb-1.0-0, libopencv-core4.5 | libopencv-core4.6, libopencv-imgproc4.5 | libopencv-imgproc4.6, libopencv-imgcodecs4.5 | libopencv-imgcodecs4.6, libopencv-highgui4.5 | libopencv-highgui4.6\n' >> $@
-	@printf 'Build-Depends: build-essential, pkg-config, libusb-1.0-0-dev, libopencv-dev, libfreetype6-dev\n' >> $@
+	@printf 'Depends: libusb-1.0-0, libstdc++6, libgcc-s1 | libgcc1, libfreetype6, fontconfig, libharfbuzz0b | libharfbuzz0, libjpeg62-turbo | libjpeg-turbo8 | libjpeg8, libpng16-16t64 | libpng16-16, zlib1g, libopencv-core4.5d | libopencv-core406 | libopencv-core410, libopencv-imgproc4.5d | libopencv-imgproc406 | libopencv-imgproc410, libopencv-imgcodecs4.5d | libopencv-imgcodecs406 | libopencv-imgcodecs410, libopencv-contrib4.5d | libopencv-contrib406 | libopencv-contrib410\n' >> $@
+	@printf 'Build-Depends: build-essential, g++, make, pkg-config, python3, libusb-1.0-0-dev, libopencv-dev, libopencv-contrib-dev, libfreetype6-dev, libfontconfig-dev, libharfbuzz-dev, libjpeg-dev, libpng-dev, zlib1g-dev\n' >> $@
 	@printf 'Description: TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels\n' >> $@
 	@printf ' A modern C++ utility for driving 3.9-inch USB LCD panels (480x128) with\n' >> $@
 	@printf ' live system monitoring, custom TTF fonts, bar graphs, and JSON config.\n' >> $@
@@ -135,8 +136,8 @@ $(SPEC): | $(PKG_RPM_DIR)
 	@printf 'URL:            https://github.com/AaronC-585/ttlcd\n' >> $@
 	@printf 'Source0:        %%{name}-%%{version}.tar.gz\n' >> $@
 	@printf '\n' >> $@
-	@printf 'BuildRequires:  gcc-c++ make pkg-config libusb1-devel opencv-devel freetype-devel\n' >> $@
-	@printf 'Requires:       libusb1 opencv freetype\n' >> $@
+	@printf 'BuildRequires:  gcc-c++ make pkg-config python3 libusb1-devel opencv-devel freetype-devel libpng-devel libjpeg-turbo-devel zlib-devel fontconfig-devel harfbuzz-devel\n' >> $@
+	@printf 'Requires:       libusb1 libstdc++ libgcc libfreetype fontconfig harfbuzz libpng libjpeg-turbo zlib opencv-core opencv-imgproc opencv-imgcodecs opencv-freetype\n' >> $@
 	@printf '\n' >> $@
 	@printf '%%description\n' >> $@
 	@printf 'A modern C++ utility for driving 3.9-inch USB LCD panels (480x128) with\n' >> $@
@@ -154,8 +155,8 @@ $(SPEC): | $(PKG_RPM_DIR)
 	@printf '%%files\n%%{_bindir}/ttlcd\n' >> $@
 	@printf '\n' >> $@
 	@printf '%%changelog\n' >> $@
-	@printf '* $(shell date "+%%a %%b %%d %%Y") Your Name <you@example.com> - $(VERSION)-1\n' >> $@
-	@printf '- Build $(VERSION)\n' >> $@
+	@echo '* '$$(date -u +%Y-%m-%d)' Aaron C <176900889+AaronC-585@users.noreply.github.com> - $(VERSION)-1' >> $@
+	@echo '- Build $(VERSION)' >> $@
 
 # =============================================================================
 # Arch PKGBUILD
@@ -170,8 +171,8 @@ $(PKGBUILD): | $(PKG_ARCH_DIR)
 	@printf "arch=('x86_64')\n" >> $@
 	@printf 'url="https://github.com/AaronC-585/ttlcd"\n' >> $@
 	@printf "license=('MIT')\n" >> $@
-	@printf "depends=('libusb' 'opencv' 'freetype2')\n" >> $@
-	@printf "makedepends=('gcc' 'pkg-config' 'make')\n" >> $@
+	@printf "depends=('libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib' 'gcc-libs')\n" >> $@
+	@printf "makedepends=('base-devel' 'pkg-config' 'python' 'libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib')\n" >> $@
 	@printf 'source=("$$pkgname-$$pkgver.tar.gz::https://github.com/AaronC-585/ttlcd/archive/v$$pkgver.tar.gz")\n' >> $@
 	@printf "sha256sums=('SKIP')\n" >> $@
 	@printf '\n' >> $@
@@ -223,7 +224,7 @@ $(CMAKE):
 	@printf '\n' >> $@
 	@printf 'target_link_libraries(ttlcd PRIVATE\n' >> $@
 	@printf '    $${LIBUSB_LIBRARIES}\n' >> $@
-	@printf '    $${OPENCV_LIBRARIES}\n' >> $@
+	@printf '    opencv_core opencv_imgproc opencv_imgcodecs opencv_freetype\n' >> $@
 	@printf '    pthread\n' >> $@
 	@printf ')\n' >> $@
 	@printf '\n' >> $@
@@ -235,7 +236,7 @@ $(CMAKE):
 $(WORKFLOW): | $(GH_WORKFLOW)
 	@echo "Generating $@"
 	@printf 'name: Release\n\n' > $@
-	@printf 'on:\n  push:\n    tags:\n      - '"'"'v*'"'"'\n\n' >> $@
+	@printf 'on:\n  push:\n    tags:\n      - '"'"'v*'"'"'\n  workflow_dispatch:\n    inputs:\n      version:\n        description: '"'"'Release version tag (e.g. v1.0.18)'"'"'\n        required: true\n        type: string\n\n' >> $@
 	@printf 'jobs:\n' >> $@
 	@printf '  build-deb:\n' >> $@
 	@printf '    runs-on: ubuntu-latest\n' >> $@
@@ -244,8 +245,9 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '      - name: Install dependencies\n' >> $@
 	@printf '        run: |\n' >> $@
 	@printf '          sudo apt-get update\n' >> $@
-	@printf '          sudo apt-get install -y build-essential pkg-config dpkg-dev \\\n' >> $@
-	@printf '            libusb-1.0-0-dev libopencv-dev libfreetype6-dev\n' >> $@
+	@printf '          sudo apt-get install -y build-essential g++ make pkg-config dpkg-dev python3 \\\n' >> $@
+	@printf '            libusb-1.0-0-dev libopencv-dev libopencv-contrib-dev libfreetype6-dev \\\n' >> $@
+	@printf '            libfontconfig-dev libharfbuzz-dev libjpeg-dev libpng-dev zlib1g-dev\n' >> $@
 	@printf '      - name: Build\n' >> $@
 	@printf '        run: make -j$$(nproc)\n' >> $@
 	@printf '      - name: Package .deb\n' >> $@
@@ -266,8 +268,9 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '      - uses: actions/checkout@v4\n' >> $@
 	@printf '      - name: Install dependencies\n' >> $@
 	@printf '        run: |\n' >> $@
-	@printf '          dnf install -y gcc-c++ make pkg-config rpm-build \\\n' >> $@
-	@printf '            libusb1-devel opencv-devel freetype-devel\n' >> $@
+	@printf '          dnf install -y gcc-c++ make pkg-config rpm-build python3 \\\n' >> $@
+	@printf '            libusb1-devel opencv-devel freetype-devel libpng-devel \\\n' >> $@
+	@printf '            libjpeg-turbo-devel zlib-devel fontconfig-devel harfbuzz-devel\n' >> $@
 	@printf '      - name: Build RPM\n' >> $@
 	@printf '        run: |\n' >> $@
 	@printf '          mkdir -p ~/rpmbuild/{SOURCES,SPECS}\n' >> $@
@@ -287,7 +290,7 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '    steps:\n' >> $@
 	@printf '      - uses: actions/checkout@v4\n' >> $@
 	@printf '      - name: Install dependencies\n' >> $@
-	@printf '        run: pacman -Sy --noconfirm base-devel pkg-config libusb opencv freetype2\n' >> $@
+	@printf '        run: pacman -Sy --noconfirm base-devel pkg-config python libusb opencv freetype2 fontconfig harfbuzz libjpeg-turbo libpng zlib\n' >> $@
 	@printf '      - name: Build & package\n' >> $@
 	@printf '        run: |\n' >> $@
 	@printf '          cp packaging/arch/PKGBUILD .\n' >> $@

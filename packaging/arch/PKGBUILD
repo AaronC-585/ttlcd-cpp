@@ -1,13 +1,13 @@
 # Maintainer: Your Name <you@example.com>
 pkgname=ttlcd
-pkgver=1.0.18
+pkgver=1.0.2
 pkgrel=1
 pkgdesc="TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels"
 arch=('x86_64')
 url="https://github.com/AaronC-585/ttlcd"
 license=('MIT')
-depends=('libusb' 'opencv' 'freetype2')
-makedepends=('gcc' 'pkg-config' 'make')
+depends=('libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib' 'gcc-libs')
+makedepends=('base-devel' 'pkg-config' 'python' 'libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/AaronC-585/ttlcd/archive/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
