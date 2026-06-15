@@ -295,7 +295,7 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '          VER="$${GITHUB_REF_NAME#v}"\n' >> $@
 	@printf '          cp packaging/arch/PKGBUILD .\n' >> $@
 	@printf '          sed -i "s/pkgver=.*/pkgver=$$VER/" PKGBUILD\n' >> $@
-	@printf '          tar czf ttlcd-$$VER.tar.gz --transform "s,^,ttlcd-$$VER/," .\n' >> $@
+	@printf '          tar czf ttlcd-$$VER.tar.gz --transform "s,^,ttlcd-$$VER/," --exclude="ttlcd-*.tar.gz" --exclude=".git" .\n' >> $@
 	@printf '          useradd -m builder\n' >> $@
 	@printf '          chown -R builder:builder .\n' >> $@
 	@printf '          su builder -c "makepkg -s --noconfirm --skipinteg --noprogressbar"\n' >> $@
@@ -308,6 +308,7 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '            *.tar.gz\n\n' >> $@
 	@printf '  release:\n' >> $@
 	@printf '    needs: [build-deb, build-rpm, build-arch]\n' >> $@
+	@printf '    if: always() && !cancelled() && needs.build-deb.result == '"'"'success'"'"' && needs.build-rpm.result == '"'"'success'"'"'\n' >> $@
 	@printf '    runs-on: ubuntu-latest\n' >> $@
 	@printf '    permissions:\n' >> $@
 	@printf '      contents: write\n' >> $@

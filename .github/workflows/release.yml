@@ -70,7 +70,7 @@ jobs:
           VER="${GITHUB_REF_NAME#v}"
           cp packaging/arch/PKGBUILD .
           sed -i "s/pkgver=.*/pkgver=$VER/" PKGBUILD
-          tar czf ttlcd-$VER.tar.gz --transform "s,^,ttlcd-$VER/," .
+          tar czf ttlcd-$VER.tar.gz --transform "s,^,ttlcd-$VER/," --exclude="ttlcd-*.tar.gz" --exclude=".git" .
           useradd -m builder
           chown -R builder:builder .
           su builder -c "makepkg -s --noconfirm --skipinteg --noprogressbar"
@@ -84,6 +84,7 @@ jobs:
 
   release:
     needs: [build-deb, build-rpm, build-arch]
+    if: always() && !cancelled() && needs.build-deb.result == 'success' && needs.build-rpm.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
