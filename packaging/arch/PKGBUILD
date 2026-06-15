@@ -4,11 +4,11 @@ pkgver=1.0.2
 pkgrel=1
 pkgdesc="TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels"
 arch=('x86_64')
-url="https://github.com/AaronC-585/ttlcd"
+url="https://github.com/AaronC-585/ttlcd-cpp"
 license=('MIT')
 depends=('libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib' 'gcc-libs')
 makedepends=('base-devel' 'pkg-config' 'python' 'libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/AaronC-585/ttlcd/archive/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 build() {

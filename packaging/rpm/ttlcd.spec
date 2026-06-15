@@ -1,9 +1,10 @@
 Name:           ttlcd
 Version:        1.0.2
 Release:        1%{?dist}
+%global debug_package %{nil}
 Summary:        TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels
 License:        MIT
-URL:            https://github.com/AaronC-585/ttlcd
+URL:            https://github.com/AaronC-585/ttlcd-cpp
 Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  gcc-c++ make pkg-config python3 libusb1-devel opencv-devel freetype-devel libpng-devel libjpeg-turbo-devel zlib-devel fontconfig-devel harfbuzz-devel
@@ -27,5 +28,5 @@ install -Dm755 ttlcd %{buildroot}%{_bindir}/ttlcd
 %{_bindir}/ttlcd
 
 %changelog
-* 2026-06-14 Aaron C <176900889+AaronC-585@users.noreply.github.com> - 1.0.2-1
+* Mon Jun 15 2026 Aaron C <176900889+AaronC-585@users.noreply.github.com> - 1.0.2-1
 - Build 1.0.2

@@ -28,8 +28,7 @@ jobs:
         run: |
           VER="${GITHUB_REF_NAME#v}"
           echo "${VER##*.}" > .build_patch
-          make deb
-          mv ttlcd-v$VER-amd64.deb ttlcd-${{ github.ref_name }}-amd64.deb
+          make deb-package DEB_FILE=ttlcd-${{ github.ref_name }}-amd64.deb
       - uses: actions/upload-artifact@v4
         with:
           name: deb-package
@@ -68,11 +67,13 @@ jobs:
         run: pacman -Sy --noconfirm base-devel pkg-config python libusb opencv freetype2 fontconfig harfbuzz libjpeg-turbo libpng zlib
       - name: Build & package
         run: |
+          VER="${GITHUB_REF_NAME#v}"
           cp packaging/arch/PKGBUILD .
-          sed -i "s/pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" PKGBUILD
+          sed -i "s/pkgver=.*/pkgver=$VER/" PKGBUILD
+          tar czf ttlcd-$VER.tar.gz --transform "s,^,ttlcd-$VER/," .
           useradd -m builder
           chown -R builder:builder .
-          su builder -c "makepkg -s --noconfirm --skipinteg"
+          su builder -c "makepkg -s --noconfirm --skipinteg --noprogressbar"
           tar czf ttlcd-${{ github.ref_name }}-PKGBUILD.tar.gz PKGBUILD
       - uses: actions/upload-artifact@v4
         with:

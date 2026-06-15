@@ -131,9 +131,10 @@ $(SPEC): | $(PKG_RPM_DIR)
 	@printf 'Name:           ttlcd\n' > $@
 	@printf 'Version:        $(VERSION)\n' >> $@
 	@printf 'Release:        1%%{?dist}\n' >> $@
+	@printf '%%global debug_package %%{nil}\n' >> $@
 	@printf 'Summary:        TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels\n' >> $@
 	@printf 'License:        MIT\n' >> $@
-	@printf 'URL:            https://github.com/AaronC-585/ttlcd\n' >> $@
+	@printf 'URL:            https://github.com/AaronC-585/ttlcd-cpp\n' >> $@
 	@printf 'Source0:        %%{name}-%%{version}.tar.gz\n' >> $@
 	@printf '\n' >> $@
 	@printf 'BuildRequires:  gcc-c++ make pkg-config python3 libusb1-devel opencv-devel freetype-devel libpng-devel libjpeg-turbo-devel zlib-devel fontconfig-devel harfbuzz-devel\n' >> $@
@@ -155,7 +156,7 @@ $(SPEC): | $(PKG_RPM_DIR)
 	@printf '%%files\n%%{_bindir}/ttlcd\n' >> $@
 	@printf '\n' >> $@
 	@printf '%%changelog\n' >> $@
-	@echo '* '$$(date -u +%Y-%m-%d)' Aaron C <176900889+AaronC-585@users.noreply.github.com> - $(VERSION)-1' >> $@
+	@echo '* '$$(LC_ALL=C date -u '+%a %b %d %Y')' Aaron C <176900889+AaronC-585@users.noreply.github.com> - $(VERSION)-1' >> $@
 	@echo '- Build $(VERSION)' >> $@
 
 # =============================================================================
@@ -169,11 +170,11 @@ $(PKGBUILD): | $(PKG_ARCH_DIR)
 	@printf 'pkgrel=1\n' >> $@
 	@printf 'pkgdesc="TTL LCD system monitor for Thermaltake Tower 200 and compatible USB LCD panels"\n' >> $@
 	@printf "arch=('x86_64')\n" >> $@
-	@printf 'url="https://github.com/AaronC-585/ttlcd"\n' >> $@
+	@printf 'url="https://github.com/AaronC-585/ttlcd-cpp"\n' >> $@
 	@printf "license=('MIT')\n" >> $@
 	@printf "depends=('libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib' 'gcc-libs')\n" >> $@
 	@printf "makedepends=('base-devel' 'pkg-config' 'python' 'libusb' 'opencv' 'freetype2' 'fontconfig' 'harfbuzz' 'libjpeg-turbo' 'libpng' 'zlib')\n" >> $@
-	@printf 'source=("$$pkgname-$$pkgver.tar.gz::https://github.com/AaronC-585/ttlcd/archive/v$$pkgver.tar.gz")\n' >> $@
+	@printf 'source=("$$pkgname-$$pkgver.tar.gz")\n' >> $@
 	@printf "sha256sums=('SKIP')\n" >> $@
 	@printf '\n' >> $@
 	@printf 'build() {\n' >> $@
@@ -254,8 +255,7 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '        run: |\n' >> $@
 	@printf '          VER="$${GITHUB_REF_NAME#v}"\n' >> $@
 	@printf '          echo "$${VER##*.}" > .build_patch\n' >> $@
-	@printf '          make deb\n' >> $@
-	@printf '          mv ttlcd-v$$VER-amd64.deb ttlcd-$${{ github.ref_name }}-amd64.deb\n' >> $@
+	@printf '          make deb-package DEB_FILE=ttlcd-$${{ github.ref_name }}-amd64.deb\n' >> $@
 	@printf '      - uses: actions/upload-artifact@v4\n' >> $@
 	@printf '        with:\n' >> $@
 	@printf '          name: deb-package\n' >> $@
@@ -292,11 +292,13 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '        run: pacman -Sy --noconfirm base-devel pkg-config python libusb opencv freetype2 fontconfig harfbuzz libjpeg-turbo libpng zlib\n' >> $@
 	@printf '      - name: Build & package\n' >> $@
 	@printf '        run: |\n' >> $@
+	@printf '          VER="$${GITHUB_REF_NAME#v}"\n' >> $@
 	@printf '          cp packaging/arch/PKGBUILD .\n' >> $@
-	@printf '          sed -i "s/pkgver=.*/pkgver=$${GITHUB_REF_NAME#v}/" PKGBUILD\n' >> $@
+	@printf '          sed -i "s/pkgver=.*/pkgver=$$VER/" PKGBUILD\n' >> $@
+	@printf '          tar czf ttlcd-$$VER.tar.gz --transform "s,^,ttlcd-$$VER/," .\n' >> $@
 	@printf '          useradd -m builder\n' >> $@
 	@printf '          chown -R builder:builder .\n' >> $@
-	@printf '          su builder -c "makepkg -s --noconfirm --skipinteg"\n' >> $@
+	@printf '          su builder -c "makepkg -s --noconfirm --skipinteg --noprogressbar"\n' >> $@
 	@printf '          tar czf ttlcd-$${{ github.ref_name }}-PKGBUILD.tar.gz PKGBUILD\n' >> $@
 	@printf '      - uses: actions/upload-artifact@v4\n' >> $@
 	@printf '        with:\n' >> $@
@@ -328,9 +330,13 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 # =============================================================================
 DEB_STAGING := pkg
 DEB_VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(shell cat $(VERSION_PATCH_FILE) 2>/dev/null || echo 0)
-DEB_FILE    := ttlcd-v$(DEB_VERSION)-amd64.deb
+DEB_FILE    ?= ttlcd-v$(DEB_VERSION)-amd64.deb
 
 deb: $(TARGET) $(CONTROL)
+	@$(MAKE) --no-print-directory deb-package
+
+deb-package: $(CONTROL)
+	@test -f $(TARGET) || (echo "Missing $(TARGET); run make first." && exit 1)
 	@echo "Building $(DEB_FILE)"
 	@rm -rf $(DEB_STAGING)/usr $(DEB_STAGING)/etc $(DEB_STAGING)/lib
 	@mkdir -p $(DEB_STAGING)/DEBIAN \
@@ -371,4 +377,4 @@ clean-packaging:
 
 clean-all: clean clean-packaging
 
-.PHONY: all clean clean-packaging clean-all version increment-version packaging embed-font deb
+.PHONY: all clean clean-packaging clean-all version increment-version packaging embed-font deb deb-package
