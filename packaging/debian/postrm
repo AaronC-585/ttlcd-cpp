@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge|remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        if command -v deb-systemd-helper >/dev/null 2>&1; then
+            deb-systemd-helper unmask ttlcd.service >/dev/null || true
+            deb-systemd-helper daemon-reload || true
+        elif command -v systemctl >/dev/null 2>&1; then
+            systemctl daemon-reload || true
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

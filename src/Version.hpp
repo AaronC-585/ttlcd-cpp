@@ -3,7 +3,7 @@
 #include <string>
 
 namespace Version {
-    constexpr const char* BUILD_DATE = "June 14, 2026";
+    constexpr const char* BUILD_DATE = "June 15, 2026";
     constexpr int MAJOR = 1;
     constexpr int MINOR = 0;
     constexpr int PATCH = 1;

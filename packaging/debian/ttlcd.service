@@ -1,0 +1,29 @@
+[Unit]
+Description=Thermaltake Tower 200 USB LCD dashboard
+Documentation=https://github.com/AaronC-585/ttlcd-cpp
+After=local-fs.target network-online.target systemd-udev-settle.service
+Wants=network-online.target
+ConditionPathExists=/etc/ttlcd/config.json
+
+[Service]
+Type=simple
+User=ttlcd
+Group=ttlcd
+ExecStart=/usr/bin/ttlcd /etc/ttlcd/config.json
+WorkingDirectory=/etc/ttlcd
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+# USB device access (see 99-ttlcd.rules) and /proc,/sys sensor reads
+PrivateDevices=no
+ProtectSystem=full
+ReadWritePaths=/tmp
+NoNewPrivileges=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ttlcd
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        if command -v deb-systemd-helper >/dev/null 2>&1; then
+            deb-systemd-helper stop ttlcd.service >/dev/null || true
+            deb-systemd-helper mask ttlcd.service >/dev/null || true
+        elif command -v systemctl >/dev/null 2>&1; then
+            systemctl stop ttlcd.service >/dev/null 2>&1 || true
+            systemctl disable ttlcd.service >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

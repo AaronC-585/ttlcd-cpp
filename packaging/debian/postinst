@@ -1,0 +1,35 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        if command -v systemd-sysusers >/dev/null 2>&1 && [ -f /usr/lib/sysusers.d/ttlcd.conf ]; then
+            systemd-sysusers /usr/lib/sysusers.d/ttlcd.conf || true
+        fi
+
+        if ! getent passwd ttlcd >/dev/null 2>&1; then
+            if command -v adduser >/dev/null 2>&1; then
+                adduser --system --group --no-create-home --disabled-login --disabled-password ttlcd
+            else
+                groupadd --system ttlcd 2>/dev/null || true
+                useradd --system --gid ttlcd --no-create-home --shell /usr/sbin/nologin ttlcd
+            fi
+        fi
+
+        if command -v deb-systemd-helper >/dev/null 2>&1; then
+            deb-systemd-helper unmask ttlcd.service >/dev/null || true
+            deb-systemd-helper daemon-reload || true
+        elif command -v systemctl >/dev/null 2>&1; then
+            systemctl daemon-reload || true
+        fi
+
+        if command -v udevadm >/dev/null 2>&1; then
+            udevadm control --reload-rules || true
+            udevadm trigger --subsystem-match=usb || true
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

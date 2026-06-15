@@ -252,11 +252,10 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '        run: make -j$$(nproc)\n' >> $@
 	@printf '      - name: Package .deb\n' >> $@
 	@printf '        run: |\n' >> $@
-	@printf '          mkdir -p pkg/DEBIAN pkg/usr/bin\n' >> $@
-	@printf '          cp packaging/debian/control pkg/DEBIAN/control\n' >> $@
-	@printf '          sed -i "s/Version: .*/Version: $${GITHUB_REF_NAME#v}/" pkg/DEBIAN/control\n' >> $@
-	@printf '          cp ttlcd pkg/usr/bin/ttlcd\n' >> $@
-	@printf '          dpkg-deb --build pkg ttlcd-$${{ github.ref_name }}-amd64.deb\n' >> $@
+	@printf '          VER="$${GITHUB_REF_NAME#v}"\n' >> $@
+	@printf '          echo "$${VER##*.}" > .build_patch\n' >> $@
+	@printf '          make deb\n' >> $@
+	@printf '          mv ttlcd-v$$VER-amd64.deb ttlcd-$${{ github.ref_name }}-amd64.deb\n' >> $@
 	@printf '      - uses: actions/upload-artifact@v4\n' >> $@
 	@printf '        with:\n' >> $@
 	@printf '          name: deb-package\n' >> $@
@@ -325,6 +324,37 @@ $(WORKFLOW): | $(GH_WORKFLOW)
 	@printf '          generate_release_notes: true\n' >> $@
 
 # =============================================================================
+# Debian package (binary + systemd service + udev rule + default config)
+# =============================================================================
+DEB_STAGING := pkg
+DEB_VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(shell cat $(VERSION_PATCH_FILE) 2>/dev/null || echo 0)
+DEB_FILE    := ttlcd-v$(DEB_VERSION)-amd64.deb
+
+deb: $(TARGET) $(CONTROL)
+	@echo "Building $(DEB_FILE)"
+	@rm -rf $(DEB_STAGING)/usr $(DEB_STAGING)/etc $(DEB_STAGING)/lib
+	@mkdir -p $(DEB_STAGING)/DEBIAN \
+		$(DEB_STAGING)/usr/bin \
+		$(DEB_STAGING)/usr/lib/systemd/system \
+		$(DEB_STAGING)/usr/share/ttlcd/backgrounds \
+		$(DEB_STAGING)/etc/ttlcd \
+		$(DEB_STAGING)/lib/udev/rules.d
+	@cp $(CONTROL) $(DEB_STAGING)/DEBIAN/control
+	@sed -i 's/^Version:.*/Version: $(DEB_VERSION)/' $(DEB_STAGING)/DEBIAN/control
+	@install -Dm755 $(TARGET) $(DEB_STAGING)/usr/bin/ttlcd
+	@install -Dm644 packaging/debian/ttlcd.service $(DEB_STAGING)/usr/lib/systemd/system/ttlcd.service
+	@install -Dm644 packaging/debian/ttlcd.sysusers $(DEB_STAGING)/usr/lib/sysusers.d/ttlcd.conf
+	@install -Dm644 packaging/debian/99-ttlcd.rules $(DEB_STAGING)/lib/udev/rules.d/99-ttlcd.rules
+	@install -Dm644 packaging/debian/ttlcd.default.json $(DEB_STAGING)/etc/ttlcd/config.json
+	@install -Dm644 backgrounds/permanent-headers.jpg $(DEB_STAGING)/usr/share/ttlcd/backgrounds/permanent-headers.jpg
+	@install -Dm755 packaging/debian/postinst $(DEB_STAGING)/DEBIAN/postinst
+	@install -Dm755 packaging/debian/prerm $(DEB_STAGING)/DEBIAN/prerm
+	@install -Dm755 packaging/debian/postrm $(DEB_STAGING)/DEBIAN/postrm
+	@printf '/etc/ttlcd/config.json\n' > $(DEB_STAGING)/DEBIAN/conffiles
+	@dpkg-deb --root-owner-group --build $(DEB_STAGING) $(DEB_FILE)
+	@echo "Created $(DEB_FILE)"
+
+# =============================================================================
 # Directory creation
 # =============================================================================
 $(PKG_DEB_DIR) $(PKG_RPM_DIR) $(PKG_ARCH_DIR) $(GH_WORKFLOW):
@@ -341,4 +371,4 @@ clean-packaging:
 
 clean-all: clean clean-packaging
 
-.PHONY: all clean clean-packaging clean-all version increment-version packaging embed-font
+.PHONY: all clean clean-packaging clean-all version increment-version packaging embed-font deb

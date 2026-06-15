@@ -34,6 +34,7 @@ LCDController::LCDController(const std::string& config_path) {
     product_id_ = config.value("idProduct", DEFAULT_PRODUCT_ID);
 
     usb_timeout_ms_ = config.value("usb_timeout_ms", 30000);
+    usb_reconnect_delay_ms_ = config.value("usb_reconnect_delay_ms", 500);
     packet_delay_ms_ = config.value("packet_delay_ms", 0);
     ping_packet_delay_ms_ = config.value("ping_packet_delay_ms", 0);
     loop_interval_ms_ = config.value("loop_interval_ms", 1000);
@@ -57,6 +58,7 @@ LCDController::LCDController(const std::string& config_path) {
               << "  USB device: " << std::hex << std::showbase
               << vendor_id_ << ":" << product_id_ << std::dec << std::noshowbase << "\n"
               << "  USB timeout: " << usb_timeout_ms_ << "ms\n"
+              << "  USB reconnect delay: " << usb_reconnect_delay_ms_ << "ms\n"
               << "  Image packet delay: " << packet_delay_ms_ << "ms\n"
               << "  Ping packet delay: " << ping_packet_delay_ms_ << "ms\n"
               << "  Loop interval: " << loop_interval_ms_ << "ms\n"
@@ -186,6 +188,43 @@ void LCDController::try_reconnect() {
     }
 }
 
+void LCDController::kick_usb_unlocked() {
+    if (!dev_handle_) {
+        return;
+    }
+
+    std::cerr << "Kicking USB: clearing endpoint halts and draining input buffers\n";
+
+    libusb_clear_halt(dev_handle_, ep_write_ | LIBUSB_ENDPOINT_OUT);
+    libusb_clear_halt(dev_handle_, ep_main_ | LIBUSB_ENDPOINT_OUT);
+    libusb_clear_halt(dev_handle_, ep_read_ | LIBUSB_ENDPOINT_IN);
+    libusb_clear_halt(dev_handle_, ep_trigger_ | LIBUSB_ENDPOINT_IN);
+
+    drain_in_endpoint(ep_read_);
+    drain_in_endpoint(ep_trigger_);
+}
+
+bool LCDController::handle_usb_failure_unlocked(int error_code, const char* operation) {
+    if (error_code != LIBUSB_ERROR_TIMEOUT &&
+        error_code != LIBUSB_ERROR_PIPE &&
+        error_code != LIBUSB_ERROR_NO_DEVICE) {
+        return false;
+    }
+
+    std::cerr << operation << " failed: " << libusb_error_string(error_code)
+              << " — kicking USB connection\n";
+    kick_usb_unlocked();
+    disconnect_unlocked();
+    return true;
+}
+
+void LCDController::reconnect_after_failure(const char* reason) {
+    std::cerr << reason << " — attempting USB reconnect in "
+              << usb_reconnect_delay_ms_ << "ms\n";
+    std::this_thread::sleep_for(std::chrono::milliseconds(usb_reconnect_delay_ms_));
+    try_reconnect();
+}
+
 void LCDController::disconnect_unlocked() {
     connected_ = false;
     uploading_ = false;
@@ -249,7 +288,9 @@ void LCDController::update_display() {
         std::cout << "Dashboard updated on LCD\n";
     } catch (const std::exception& e) {
         std::cerr << "Failed to update display: " << e.what() << std::endl;
-        disconnect();
+        if (!connected_.load()) {
+            reconnect_after_failure("Display update recovery");
+        }
     }
 }
 
@@ -272,7 +313,9 @@ void LCDController::confirm_after_upload_unlocked() {
     if (try_recv_packet(ep_trigger_, 1, 2000, 16)) {
         std::cout << "Upload confirmed by device\n";
     } else {
-        std::cerr << "Warning: Upload confirmation read timed out\n";
+        std::cerr << "Warning: Upload confirmation timed out — kicking USB\n";
+        kick_usb_unlocked();
+        disconnect_unlocked();
     }
 }
 
@@ -338,6 +381,9 @@ void LCDController::send_image(const std::vector<uint8_t>& jpeg_data) {
         }
 
         confirm_after_upload_unlocked();
+        if (!connected_.load()) {
+            throw std::runtime_error("LCD device disconnected after upload confirmation timeout");
+        }
     } catch (...) {
         uploading_ = false;
         throw;
@@ -378,7 +424,9 @@ void LCDController::initialize_device_unlocked() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         if (!try_recv_packet(ep_read_, 1, 10000, 440)) {
-            std::cerr << "Warning: Init handshake read timed out (continuing)\n";
+            std::cerr << "Warning: Init handshake timed out — kicking USB\n";
+            kick_usb_unlocked();
+            throw std::runtime_error("Init handshake timed out");
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -423,8 +471,8 @@ void LCDController::send_packet(const uint8_t* data, size_t length, uint8_t endp
                                  &transferred, usb_timeout_ms_);
 
     if (r != LIBUSB_SUCCESS) {
-        if (r == LIBUSB_ERROR_NO_DEVICE || r == LIBUSB_ERROR_PIPE) {
-            disconnect_unlocked();
+        if (handle_usb_failure_unlocked(r, "USB send")) {
+            throw std::runtime_error("USB transfer failed: " + libusb_error_string(r));
         }
         throw std::runtime_error("USB transfer failed: " + libusb_error_string(r));
     }
@@ -465,8 +513,8 @@ bool LCDController::try_recv_packet(uint8_t endpoint, size_t min_bytes, int time
     }
 
     if (r != LIBUSB_SUCCESS) {
-        if (r == LIBUSB_ERROR_NO_DEVICE || r == LIBUSB_ERROR_PIPE) {
-            disconnect_unlocked();
+        if (handle_usb_failure_unlocked(r, "USB receive")) {
+            throw std::runtime_error("USB receive failed: " + libusb_error_string(r));
         }
         throw std::runtime_error("USB receive failed: " + libusb_error_string(r));
     }
@@ -548,7 +596,9 @@ void LCDController::keepalive_loop() {
             send_keepalive_unlocked();
         } catch (const std::exception& e) {
             std::cerr << "Warning: Keep-alive failed: " << e.what() << std::endl;
-            disconnect_unlocked();
+            if (!connected_.load()) {
+                reconnect_after_failure("Keep-alive recovery");
+            }
         }
     }
 }

@@ -34,6 +34,7 @@ private:
     uint8_t ep_trigger_ = 0x84;
 
     int usb_timeout_ms_ = 30000;
+    int usb_reconnect_delay_ms_ = 500;
     int packet_delay_ms_ = 0;
     int ping_packet_delay_ms_ = 0;
     int loop_interval_ms_ = 1000;
@@ -62,6 +63,9 @@ private:
     void try_reconnect();
     void disconnect();
     void disconnect_unlocked();
+    void kick_usb_unlocked();
+    bool handle_usb_failure_unlocked(int error_code, const char* operation);
+    void reconnect_after_failure(const char* reason);
     void read_string_descriptors();
     void start_keepalive_thread();
     void stop_keepalive_thread();

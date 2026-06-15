@@ -1,0 +1,60 @@
+{
+  "_comment_usb": "Default USB ID is 264a:233d — omit idVendor/idProduct to use defaults",
+  "jpeg_quality": 85,
+  "jpeg_dpi": 150,
+  "jpeg_optimize": false,
+  "use": "NODE",
+  "orientation": "TOP",
+  "background": "/usr/share/ttlcd/backgrounds/permanent-headers.jpg",
+
+  "font_file": "embedded",
+  "font_size": 40,
+  "font_scale_percent": 44,
+  "font_color": [0, 255, 255],
+  "temp_unit": "F",
+
+  "loop_interval_ms": 500,
+  "ping_interval_sec": 3,
+  "ping_packet_delay_ms": 0,
+  "enable_dashboard": true,
+  "dashboard_interval_sec": 2,
+  "packet_delay_ms": 1,
+  "enable_ping": true,
+  "save_jpeg": false,
+
+  "widgets": [
+    {
+      "type": "all_temps",
+      "enable": true,
+      "display_mode": "fraction",
+      "x": 8,
+      "y": 67,
+      "font_size": 40,
+      "font_color": [0, 255, 255]
+    },
+    {
+      "type": "cpu_percent",
+      "enable": true,
+      "x": 168,
+      "y": 67,
+      "font_size": 40,
+      "font_color": [0, 255, 255]
+    },
+    {
+      "type": "ram_percent",
+      "enable": true,
+      "x": 168,
+      "y": 107,
+      "font_size": 40,
+      "font_color": [0, 255, 255]
+    },
+    {
+      "type": "network",
+      "enable": true,
+      "x": 308,
+      "y": 67,
+      "font_size": 40,
+      "font_color": [0, 255, 255]
+    }
+  ]
+}

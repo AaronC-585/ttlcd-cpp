@@ -26,11 +26,10 @@ jobs:
         run: make -j$(nproc)
       - name: Package .deb
         run: |
-          mkdir -p pkg/DEBIAN pkg/usr/bin
-          cp packaging/debian/control pkg/DEBIAN/control
-          sed -i "s/Version: .*/Version: ${GITHUB_REF_NAME#v}/" pkg/DEBIAN/control
-          cp ttlcd pkg/usr/bin/ttlcd
-          dpkg-deb --build pkg ttlcd-${{ github.ref_name }}-amd64.deb
+          VER="${GITHUB_REF_NAME#v}"
+          echo "${VER##*.}" > .build_patch
+          make deb
+          mv ttlcd-v$VER-amd64.deb ttlcd-${{ github.ref_name }}-amd64.deb
       - uses: actions/upload-artifact@v4
         with:
           name: deb-package
@@ -44,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: |
           dnf install -y gcc-c++ make pkg-config rpm-build python3 \
-            libusb1-devel opencv-devel opencv-contrib-devel freetype-devel libpng-devel \
+            libusb1-devel opencv-devel freetype-devel libpng-devel \
             libjpeg-turbo-devel zlib-devel fontconfig-devel harfbuzz-devel
       - name: Build RPM
         run: |

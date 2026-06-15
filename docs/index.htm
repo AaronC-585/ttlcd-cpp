@@ -702,17 +702,20 @@ git push origin v1.0.18</code></pre>
   <!-- Daemon -->
   <section class="fade-in systemd">
     <h2><span class="icon">⚙</span> Running as a Daemon</h2>
-    <p style="margin-bottom:12px; color:var(--text-muted); font-size:13.5px;">Create <code>/etc/systemd/system/ttlcd.service</code>:</p>
+    <p style="margin-bottom:12px; color:var(--text-muted); font-size:13.5px;">Installed by the <code>.deb</code> package to <code>/usr/lib/systemd/system/ttlcd.service</code>:</p>
     <div class="code-wrap">
       <pre><code>[Unit]
-Description=Thermaltake LCD Dashboard
-After=network.target
+Description=Thermaltake Tower 200 USB LCD dashboard
+After=local-fs.target network-online.target systemd-udev-settle.service
+ConditionPathExists=/etc/ttlcd/config.json
 
 [Service]
 Type=simple
-User=root
+User=ttlcd
+Group=ttlcd
 ExecStart=/usr/bin/ttlcd /etc/ttlcd/config.json
-Restart=always
+WorkingDirectory=/etc/ttlcd
+Restart=on-failure
 RestartSec=5
 
 [Install]

@@ -1,0 +1,2 @@
+# Thermaltake Tower 200 USB LCD (264a:233d) and compatible panels
+SUBSYSTEM=="usb", ATTR{idVendor}=="264a", ATTR{idProduct}=="233d", MODE="0666", TAG+="uaccess"
