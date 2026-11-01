@@ -53,6 +53,7 @@ private:
     std::thread keepalive_thread_;
     std::atomic<bool> running_{false};
     std::atomic<bool> connected_{false};
+    bool interfaces_claimed_ = false;
     bool device_wait_logged_ = false;
 
     std::chrono::steady_clock::time_point last_ping_;
@@ -63,6 +64,8 @@ private:
     void try_reconnect();
     void disconnect();
     void disconnect_unlocked();
+    void claim_interfaces_unlocked();
+    void release_interfaces_unlocked();
     void kick_usb_unlocked();
     bool handle_usb_failure_unlocked(int error_code, const char* operation);
     void reconnect_after_failure(const char* reason);

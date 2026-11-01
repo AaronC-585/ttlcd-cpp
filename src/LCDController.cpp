@@ -147,16 +147,7 @@ bool LCDController::try_connect() {
     }
 
     try {
-        if (libusb_kernel_driver_active(dev_handle_, 0) == 1) {
-            libusb_detach_kernel_driver(dev_handle_, 0);
-        }
-        if (libusb_kernel_driver_active(dev_handle_, 1) == 1) {
-            libusb_detach_kernel_driver(dev_handle_, 1);
-        }
-
-        libusb_set_configuration(dev_handle_, 1);
-        libusb_claim_interface(dev_handle_, 0);
-        libusb_claim_interface(dev_handle_, 1);
+        claim_interfaces_unlocked();
 
         std::cout << "Connected to Thermaltake LCD (VID:0x" << std::hex << vendor_id_
                   << " PID:0x" << product_id_ << ")" << std::dec << std::endl;
@@ -188,12 +179,90 @@ void LCDController::try_reconnect() {
     }
 }
 
+void LCDController::claim_interfaces_unlocked() {
+    if (!dev_handle_) {
+        throw std::runtime_error("Cannot claim USB interfaces: device handle is null");
+    }
+
+    // Auto-detach any kernel driver that owns these interfaces.
+    libusb_set_auto_detach_kernel_driver(dev_handle_, 1);
+
+    for (int iface : {0, 1}) {
+        if (libusb_kernel_driver_active(dev_handle_, iface) == 1) {
+            const int det = libusb_detach_kernel_driver(dev_handle_, iface);
+            if (det != LIBUSB_SUCCESS && det != LIBUSB_ERROR_NOT_FOUND &&
+                det != LIBUSB_ERROR_NOT_SUPPORTED) {
+                throw std::runtime_error("Failed to detach kernel driver from interface " +
+                                         std::to_string(iface) + ": " +
+                                         libusb_error_string(det));
+            }
+        }
+    }
+
+    int current_config = -1;
+    const int get_cfg = libusb_get_configuration(dev_handle_, &current_config);
+    if (get_cfg == LIBUSB_SUCCESS && current_config != 1) {
+        const int set_cfg = libusb_set_configuration(dev_handle_, 1);
+        if (set_cfg != LIBUSB_SUCCESS && set_cfg != LIBUSB_ERROR_BUSY) {
+            throw std::runtime_error("Failed to set USB configuration 1: " +
+                                     libusb_error_string(set_cfg));
+        }
+    } else if (get_cfg != LIBUSB_SUCCESS) {
+        // Fall back to set_configuration when query is unsupported.
+        const int set_cfg = libusb_set_configuration(dev_handle_, 1);
+        if (set_cfg != LIBUSB_SUCCESS && set_cfg != LIBUSB_ERROR_BUSY) {
+            throw std::runtime_error("Failed to set USB configuration 1: " +
+                                     libusb_error_string(set_cfg));
+        }
+    }
+
+    for (int iface : {0, 1}) {
+        const int claim = libusb_claim_interface(dev_handle_, iface);
+        if (claim != LIBUSB_SUCCESS) {
+            interfaces_claimed_ = false;
+            throw std::runtime_error("Failed to claim USB interface " +
+                                     std::to_string(iface) + ": " +
+                                     libusb_error_string(claim));
+        }
+    }
+
+    interfaces_claimed_ = true;
+}
+
+void LCDController::release_interfaces_unlocked() {
+    if (!dev_handle_) {
+        interfaces_claimed_ = false;
+        return;
+    }
+
+    if (interfaces_claimed_) {
+        libusb_release_interface(dev_handle_, 0);
+        libusb_release_interface(dev_handle_, 1);
+        interfaces_claimed_ = false;
+    }
+}
+
 void LCDController::kick_usb_unlocked() {
     if (!dev_handle_) {
         return;
     }
 
-    std::cerr << "Kicking USB: clearing endpoint halts and draining input buffers\n";
+    std::cerr << "Kicking USB: reclaiming interfaces, clearing endpoint halts, draining inputs\n";
+
+    // clear_halt / bulk drain require claimed interfaces; reclaim first to avoid
+    // kernel "did not claim interface before use" spam.
+    try {
+        if (!interfaces_claimed_) {
+            claim_interfaces_unlocked();
+        } else {
+            // Soft reclaim: release then claim again in case usbfs lost ownership.
+            release_interfaces_unlocked();
+            claim_interfaces_unlocked();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "USB reclaim during kick failed: " << e.what() << "\n";
+        return;
+    }
 
     libusb_clear_halt(dev_handle_, ep_write_ | LIBUSB_ENDPOINT_OUT);
     libusb_clear_halt(dev_handle_, ep_main_ | LIBUSB_ENDPOINT_OUT);
@@ -231,11 +300,11 @@ void LCDController::disconnect_unlocked() {
     first_upload_pending_ = true;
 
     if (!dev_handle_) {
+        interfaces_claimed_ = false;
         return;
     }
 
-    libusb_release_interface(dev_handle_, 0);
-    libusb_release_interface(dev_handle_, 1);
+    release_interfaces_unlocked();
     libusb_close(dev_handle_);
     dev_handle_ = nullptr;
 }
@@ -465,6 +534,10 @@ std::string LCDController::libusb_error_string(int error_code) {
 }
 
 void LCDController::send_packet(const uint8_t* data, size_t length, uint8_t endpoint, int post_delay_ms) {
+    if (!dev_handle_ || !interfaces_claimed_) {
+        throw std::runtime_error("USB transfer attempted without claimed interfaces");
+    }
+
     int transferred = 0;
     int r = libusb_bulk_transfer(dev_handle_, endpoint | LIBUSB_ENDPOINT_OUT,
                                  const_cast<uint8_t*>(data), static_cast<int>(length),
@@ -493,6 +566,10 @@ void LCDController::recv_packet(uint8_t endpoint, size_t min_bytes, int timeout_
 }
 
 bool LCDController::try_recv_packet(uint8_t endpoint, size_t min_bytes, int timeout_ms, size_t buffer_size) {
+    if (!dev_handle_ || !interfaces_claimed_) {
+        throw std::runtime_error("USB receive attempted without claimed interfaces");
+    }
+
     if (buffer_size < min_bytes) {
         buffer_size = min_bytes;
     }

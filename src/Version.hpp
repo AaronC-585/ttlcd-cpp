@@ -3,10 +3,10 @@
 #include <string>
 
 namespace Version {
-    constexpr const char* BUILD_DATE = "June 15, 2026";
+    constexpr const char* BUILD_DATE = "November 01, 2026";
     constexpr int MAJOR = 1;
     constexpr int MINOR = 0;
-    constexpr int PATCH = 1;
+    constexpr int PATCH = 2;
 
     inline std::string get_version() {
         return std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(PATCH);
